@@ -1,0 +1,5 @@
+Version:
+pandas 2.2.2
+python 3.12.4
+numpy 1.26.4
+plotly 5.22.0
