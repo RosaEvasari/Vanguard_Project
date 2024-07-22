@@ -1,4 +1,4 @@
 Version:
 pandas 2.2.2 (it already includes numpy)
 python 3.12.4
-plotly 5.22.0
+ipykernel 6.29.5
