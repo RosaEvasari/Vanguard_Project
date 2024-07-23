@@ -1,3 +1,6 @@
+import pandas as pd
+import plotly.express as px
+
 # Read csv file
 
 def read_txt(file_path):
