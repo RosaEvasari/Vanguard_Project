@@ -7,9 +7,9 @@ Vanguard just launched an exciting digital experiment. Our goal as Customer Expe
 
 ## Data
 We use three datasets provided by the company as follows:<br>
-1. Client Profiles (df_final_demo): Demographics like age, gender, and account details of our clients.<br>
-2. Digital Footprints (df_final_web_data): A detailed trace of client interactions online.<br>
-3. Experiment Roster (df_final_experiment_clients): A list revealing which clients were part of the grand experiment.
+1. **Client Profiles** (df_final_demo): Demographics like age, gender, and account details of our clients.<br>
+2. **Digital Footprints** (df_final_web_data): A detailed trace of client interactions online.<br>
+3. **Experiment Roster** (df_final_experiment_clients): A list revealing which clients were part of the grand experiment.
 
 ### Metadata
 This comprehensive set of fields will provide you better understandings of the data:
@@ -43,8 +43,8 @@ This comprehensive set of fields will provide you better understandings of the d
 (link of the app)
 
 ## Additional links
-### Notion
-### Presentation
+- **Notion**:
+- **Presentation**:
 
 
 
