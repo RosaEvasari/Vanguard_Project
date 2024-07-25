@@ -3,6 +3,7 @@ import plotly.express as px
 import seaborn as sns
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
+import matplotlib.pyplot as plt
 
 
 # Data exploration
@@ -76,14 +77,34 @@ def fill_missing(df, cols_numerical, cols_categorical):
     return df_filled
 
 
-def plot_distributions_numerical(df, cols_numerical):
-    fig = make_subplots(rows=len(cols_numerical), cols=1, subplot_titles=(cols_numerical), vertical_spacing=0.04)
 
+def plot_distributions_numerical(df, cols):
+    height= 2*len(cols)
+    fig, axs = plt.subplots(len(cols), 1, figsize = (5,height))
     k = 0
-    for variable in cols_numerical:
-        k += 1
-        fig.add_trace(go.Histogram(x=df[variable], name=variable), row=k, col=1)
 
-    height= 250*len(cols_numerical)
-    fig.update_layout(height=height, width=800)
-    fig.show(config={'staticPlot': True})
+    if len(cols) > 1:
+        for col in cols:
+            if df.dtypes.astype(str)[col] == 'float64' or df.dtypes.astype(str)[col] == 'int64':
+                sns.histplot(data=df, x=col, ax=axs[k])
+            elif df.dtypes.astype(str)[col] == 'object':
+                sns.countplot(data=df, x=col, ax=axs[k])
+            k += 1
+    else:
+        col = cols[0]
+        if df.dtypes.astype(str)[col] == 'float64' or df.dtypes.astype(str)[col] == 'int64':
+            sns.histplot(data=df, x=col, ax=axs)
+        elif df.dtypes.astype(str)[col] == 'object':
+            sns.countplot(data=df, x=col, ax=axs)
+
+    fig.tight_layout()
+
+
+def plot_distributions_categorical(df, cols):
+    height= 2*len(cols)
+    fig, axs = plt.subplots(len(cols), 1, figsize = (5,height))
+    k = 0
+    for col in cols:
+        sns.countplot(data=df, x=col, ax=axs[k])
+        k += 1
+    fig.tight_layout()
