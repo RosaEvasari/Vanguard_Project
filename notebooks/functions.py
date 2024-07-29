@@ -116,9 +116,9 @@ def plot_distributions_categorical(df, cols):
     fig.tight_layout()
 
 
+
+
 """ Natalia's functions """
-
-
 # (Nat)Perform initial data cheking:
 def initial_data_checking(df):
     # Print the shape of the DataFrame (number of rows and columns)
