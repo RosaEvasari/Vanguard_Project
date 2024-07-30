@@ -504,6 +504,64 @@ def shapiro_wilk_test(df, column):
 
 """ Tobias' Functions """
 
+""" Functions for Bivariate EDA """
+def create_correlation_matrix(df, cols_numerical):
+
+    correlation_matrix = df[cols_numerical].corr()
+
+    # Setting up the matplotlib figure with an appropriate size
+    plt.figure(figsize=(6, 5))
+
+    # Drawing the heatmap for the numerical columns
+    sns.heatmap(round(correlation_matrix,2), annot=True, cmap="coolwarm", vmin=-1, vmax=1)
+
+    plt.title("Correlation Heatmap for Selected Numerical Variables")
+    plt.show()
+
+def plot_balance_vs_age(df):
+    df_age_bal = pd.DataFrame({'age': pd.pivot_table(df, index="age", values="balance", aggfunc='mean').index,
+                            'balance_mean': pd.pivot_table(df, index="age", values="balance", aggfunc='mean').balance})
+
+    fig, ax = plt.subplots()
+    sns.scatterplot(df, x="age", y="balance", ax=ax)
+    ax2 = ax.twinx()
+    sns.lineplot(df_age_bal, x="age", y="balance_mean", ax=ax2, color='orange')
+    fig.legend(labels=['balance','average balance'], bbox_to_anchor=(0.15, 0.85), loc='upper left', borderaxespad=0)
+    plt.show()
+
+
+""" Functions for Experiment Evaluation """
+
+def experiment_evalutaion(df):
+    df["is_female"] = df["gender"].apply(lambda x: True if x == "F" else False)
+    df_pivot = df.pivot_table(index='variation',
+               values=['age', 'tenure_year', 'number_of_accounts', 'balance', 'calls_6_month', 'logons_6_month', 'is_female'],
+               aggfunc="mean")
+    print('Bias Test vs Control: ')
+    variables = []
+    biases = []
+    for col in df_pivot.columns:
+        bias = df_pivot.loc["Test"][col]/df_pivot.loc["Control"][col]-1
+        variables.append(col)
+        biases.append(bias)
+    return pd.DataFrame({"variable": variables, "bias": biases})
+
+def calculate_avg_daily_visits_per_time_period(df):
+    visits_total = (df["Control"] + df["Test"])
+
+    visits_1 = visits_total.loc[(visits_total.index <= 13)].mean()
+    visits_2 = visits_total.loc[(visits_total.index <= 46) & (visits_total.index > 13)].mean()
+    visits_3 = visits_total.loc[(visits_total.index > 46)].mean()
+
+    print(f"Average Daily Visits")
+    print(f"--------------------")
+    print(f"In the last two weeks of March: {int(round(visits_1,0))}")
+    print(f"In April: {int(round(visits_2,0))}")
+    print(f"In May and June: {int(round(visits_3,0))}")
+
+
+""" Functions for Error Rates """
+
 def calculate_avg_errors_per_visit(df):
     df_visits = df[['unique_session_id', 'process_step', 'date_time', 'variation']].sort_values(by=["unique_session_id", "date_time"])
     process_step_dict = {'start': 0, 'step_1': 1, 'step_2': 2, 'step_3': 3, 'confirm': 4}
@@ -518,3 +576,95 @@ def calculate_avg_errors_per_visit(df):
     error_rate_control = total_errors_control / total_visits_control
     error_rate_test = total_errors_test / total_visits_test
     return error_rate_control, error_rate_test
+
+def calculate_avg_error_rates_per_time_period(df):
+
+    error_rate_control_1, error_rate_test_1 = calculate_avg_errors_per_visit(df)
+    error_rate_control_2, error_rate_test_2 = calculate_avg_errors_per_visit(df.loc[df["day_of_trial"] < 55])
+    error_rate_control_3, error_rate_test_3 = calculate_avg_errors_per_visit(df.loc[df["day_of_trial"] >= 55])
+
+    print(f"Daily Average Error Rates")
+    print(f"-------------------------")
+    print(f"")
+    print(f"In total")
+    print(f"Control: {round(error_rate_control_1*100, 1)}%")
+    print(f"Test: {round(error_rate_test_1*100, 1)}%")
+    print(f"")
+    print(f"Trial Day < 55")
+    print(f"Control: {round(error_rate_control_2*100, 1)}%")
+    print(f"Test: {round(error_rate_test_2*100, 1)}%")
+    print(f"")
+    print(f"Trial Day >= 55")
+    print(f"Control: {round(error_rate_control_3*100, 1)}%")
+    print(f"Test: {round(error_rate_test_3*100, 1)}%")
+
+def calculate_grouped_error_rates(df, grouping_column):
+    error_rates = pd.DataFrame({"error_rate_control": df.groupby([grouping_column]).apply(lambda x: calculate_avg_errors_per_visit(x)[0], include_groups=False),
+                                "error_rate_test": df.groupby([grouping_column]).apply(lambda x: calculate_avg_errors_per_visit(x)[1], include_groups=False)})
+    return error_rates
+
+def plot_avg_errors_per_day(df):
+    fig, axs = plt.subplots(2, 2, figsize=(10, 8))
+
+    sns.scatterplot(df, ax=axs[0, 0])
+    axs[0, 0].set_title('Average Error Rate per Day')
+    axs[0, 0].set_xlabel('Day of Trial')
+    axs[0, 0].set_ylabel('Error Rate')
+
+    sns.histplot(df, bins=20, ax=axs[0, 1])
+    axs[0, 1].set_title('Average Daily Error Rate Distribution')
+    axs[0, 1].set_xlabel('Errors Rate')
+    axs[0, 1].set_ylabel('Count')
+
+    # Distribution < Day 55
+    sns.histplot(df.loc[(df.index < 55)], bins=15, ax=axs[1, 0])
+    axs[1, 0].set_title('Trial Day < 55')
+    axs[1, 0].set_xlabel('Errors Rate')
+    axs[1, 0].set_ylabel('Count')
+
+    # Distribution >= Day 55
+    sns.histplot(df.loc[(df.index >= 55)], bins=15, ax=axs[1, 1])
+    axs[1, 1].set_title('Trial Day >= 55')
+    axs[1, 1].set_xlabel('Errors Rate')
+    axs[1, 1].set_ylabel('Count')
+
+    fig.tight_layout()
+    plt.show()
+
+def errors_daily_to_csv(df):
+    # bring data into correct format for PowerBI
+    errors_daily_control = pd.DataFrame({"trial_day": df.index, "error_rate": df["error_rate_control"], "variation": "Control"})
+    errors_daily_test = pd.DataFrame({"trial_day": df.index, "error_rate": df["error_rate_test"], "variation": "Test"})
+    errors_daily_csv = pd.concat([errors_daily_control, errors_daily_test], axis=0, join='inner', ignore_index=True) #default 'outer'
+
+    # save average errors per day to csv-file
+    errors_daily_csv.to_csv("../data/cleaned/errors_daily.csv", index=True, decimal=',', encoding='utf-8')
+
+def error_rates_hypothesis_test_vs_control(df):
+
+    _, p_value_0 = stats.ttest_ind(df.loc[(df.index)]['error_rate_control'],
+                                df.loc[(df.index)]['error_rate_test'], equal_var=False, alternative='less')
+
+    _, p_value_1 = stats.ttest_ind(df.loc[(df.index < 55)]['error_rate_control'],
+                                df.loc[(df.index < 55)]['error_rate_test'], equal_var=False, alternative='less')
+
+    _, p_value_2 = stats.ttest_ind(df.loc[(df.index >= 55)]['error_rate_control'],
+                                df.loc[(df.index >= 55)]['error_rate_test'], equal_var=False, alternative='less')
+
+    print(f"p-values for H0")
+    print(f"---------------")
+    print(f"All Trial Days: {p_value_0:.{1}e}")
+    print(f"Trial Day < 55: {p_value_1:.{1}e}")
+    print(f"Trial Day >= 55: {p_value_2:.{1}e}")
+
+def error_rates_hypothesis_early_vs_late_test(df):
+    # Compare test group before day 55 and after
+    _, p_value = stats.ttest_ind(df.loc[(df.index < 55)]['error_rate_test'],
+                                df.loc[(df.index >= 55)]['error_rate_test'], equal_var=False)
+    print(f"p-value for H0: {p_value:.{1}e}")
+
+def error_rates_hypothesis_early_vs_late_control(df):
+    # Compare test group before day 55 and after
+    _, p_value = stats.ttest_ind(df.loc[(df.index < 55)]['error_rate_control'],
+                                df.loc[(df.index >= 55)]['error_rate_control'], equal_var=False)
+    print(f"p-value for H0: {p_value:.{1}e}")
