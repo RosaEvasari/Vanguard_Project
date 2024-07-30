@@ -415,51 +415,190 @@ def normalize_column(df, column_name):
 
     return df
 
-
-"""Natalia's Functions related to Time spent per visit, per step"""
-
-
-# (Nat)calculating the time spent for each visit in min
-def calculate_time_spent_min(df):
-    # Dropping the 'process_step' column
-    df = df.drop(columns=['process_step'])
-
-    # Grouping by 'visit_id' and calculating the time spent for each visit
-    df['total_time_per_visit_id'] = df.groupby(
-        'visit_id')['date_time'].transform(lambda x: x.max() - x.min())
-
-    # Dropping duplicate rows based on 'visit_id' while keeping the first occurrence
-    df = df.drop_duplicates(subset='visit_id')
-
-    # Dropping the 'date_time' column
-    df = df.drop(columns=['date_time'])
-
-    return df
+# (Nat)f_2.10.1.Hypothesis testing for Completion Rate: 'Test' group has completion rate from the A/B test more than 5% then 'Control' group.
 
 
-# (Nat)calculating the time spent for each visit in seconds:
-def calculate_time_per_visit_sec(df):
-    # Dropping the 'process_step' column if it exists
-    if 'process_step' in df.columns:
-        df = df.drop(columns=['process_step'])
+def perform_two_sample_t_test(df):
+    # Extract the completion rates for Control and Test groups
+    control_rate = df[df['Variation'] ==
+                      'Control']['average_completion_rate'].iloc[0]
+    test_rate = df[df['Variation'] ==
+                   'Test']['average_completion_rate'].iloc[0]
 
-    # Grouping by 'visit_id' and calculating the time spent for each visit
+    # Hypothetical standard deviations and sample sizes if not given
+    std_dev_control = 0.05  # Example standard deviation for Control
+    std_dev_test = 0.05     # Example standard deviation for Test
+    n_control = 100         # Example sample size for Control
+    n_test = 100            # Example sample size for Test
+
+    # Calculate the standard error of the difference between the two means
+    se_difference = ((std_dev_control**2 / n_control) +
+                     (std_dev_test**2 / n_test))**0.5
+
+    # Calculate the T-statistic for the difference between the groups
+    # Subtract 0.05 to test for more than 5% difference
+    t_stat = (test_rate - control_rate - 0.05) / se_difference
+
+    # Calculate degrees of freedom for two sample t-test
+    df = n_control + n_test - 2
+
+    # Calculate the p-value from the t distribution
+    p_value = 1 - stats.t.cdf(t_stat, df)
+
+    # Interpretation based on p-value
+    alpha = 0.05  # significance level
+    if p_value < alpha:
+        interpretation = ("Reject the null hypothesis: There is significant evidence that " +
+                          "the 'Test' group's completion rate is more than 5% higher than the 'Control' group.")
+    else:
+        interpretation = ("Fail to reject the null hypothesis: There is not significant evidence that " +
+                          "the 'Test' group's completion rate is more than 5% higher than the 'Control' group.")
+
+    return {'T-statistic': t_stat, 'P-value': p_value, 'Interpretation': interpretation}
+
+
+# (Nat)f_2.11.Calculate whether the average age of clients engaging with the new process is the same as those engaging with the old process
+def calculate_completion_rate_age(df):
+    # Split the dataframe into 'Test' and 'Control' groups
+    test_group = df[df['variation'] == 'Test']
+    control_group = df[df['variation'] == 'Control']
+
+    def get_completion_rate(group):
+        # Get the number of unique visit_ids where process_step is 'confirm'
+        completed_visits = group[group['process_step']
+                                 == 'confirm']['visit_id'].nunique()
+        # Get the total number of unique visit_ids in the group
+        total_visits = group['visit_id'].nunique()
+        # Calculate the completion rate
+        completion_rate = completed_visits / total_visits if total_visits > 0 else 0
+        # Calculate average age of the group
+        average_age = group['age'].mean()
+        return completion_rate, total_visits, completed_visits, average_age
+
+    # Get results for both groups
+    test_results = get_completion_rate(test_group)
+    control_results = get_completion_rate(control_group)
+
+    # Calculate the increase in average age between Test and Control groups
+    increase_in_age = (test_results[3] - control_results[3])*100 / \
+        control_results[3] if control_results[3] > 0 else 0
+
+    # Create a DataFrame for visualization
+    completion_rates_df = pd.DataFrame({
+        'variation': ['Control', 'Test'],
+        'completion_rate': [control_results[0], test_results[0]],
+        'completed_visits': [control_results[2], test_results[2]],
+        'total_visits': [control_results[1], test_results[1]],
+        'average_age': [control_results[3], test_results[3]]
+    })
+
+    return completion_rates_df, increase_in_age
+
+
+# (Nat)f_2.12.Check if the average client tenure (how long they've been with Vanguard) of those engaging with the new process is the same as those engaging with the old process
+def calculate_completion_rate_tenure_months(df):
+    # Split the dataframe into 'Test' and 'Control' groups
+    test_group = df[df['variation'] == 'Test']
+    control_group = df[df['variation'] == 'Control']
+
+    def get_completion_rate(group):
+        # Get the number of unique visit_ids where process_step is 'confirm'
+        completed_visits = group[group['process_step']
+                                 == 'confirm']['visit_id'].nunique()
+        # Get the total number of unique visit_ids in the group
+        total_visits = group['visit_id'].nunique()
+        # Calculate the completion rate
+        completion_rate = completed_visits / total_visits if total_visits > 0 else 0
+        # Calculate average tenure in months of the group
+        average_tenure = group['tenure_month'].mean()
+        return completion_rate, total_visits, completed_visits, average_tenure
+
+    # Get results for both groups
+    test_results = get_completion_rate(test_group)
+    control_results = get_completion_rate(control_group)
+
+    # Calculate the increase in average tenure months between Test and Control groups
+    increase_in_tenure = (test_results[3] - control_results[3]) / \
+        control_results[3] if control_results[3]*100 > 0 else 0
+
+    # Create a DataFrame for visualization
+    completion_rates_df = pd.DataFrame({
+        'variation': ['Control', 'Test'],
+        'completion_rate': [control_results[0], test_results[0]],
+        'average_tenure_months': [control_results[3], test_results[3]]
+    })
+
+    return completion_rates_df, increase_in_tenure
+
+
+# (Nat)f_2.13.Check if there are gender differences that affect engaging with the new or old process
+def calculate_completion_rate_gender(df):
+    # Split the dataframe into 'Test' and 'Control' groups
+    test_group = df[df['variation'] == 'Test']
+    control_group = df[df['variation'] == 'Control']
+
+    def get_gender_completion_rate(group, gender):
+        # Filter the group by gender
+        gender_group = group[group['gender'] == gender]
+        # Get the number of unique visit_ids where process_step is 'confirm'
+        completed_visits = gender_group[gender_group['process_step']
+                                        == 'confirm']['visit_id'].nunique()
+        # Get the total number of unique visit_ids in the gender-specific group
+        total_visits = gender_group['visit_id'].nunique()
+        # Calculate the completion rate
+        completion_rate = completed_visits / total_visits if total_visits > 0 else 0
+        return completion_rate
+
+    # Calculate completion rates for males and females in both Test and Control groups
+    male_test_completion_rate = get_gender_completion_rate(test_group, 'M')
+    female_test_completion_rate = get_gender_completion_rate(test_group, 'F')
+    male_control_completion_rate = get_gender_completion_rate(
+        control_group, 'M')
+    female_control_completion_rate = get_gender_completion_rate(
+        control_group, 'F')
+
+    # Calculate the increase in completion rates
+    increase_male = male_test_completion_rate - male_control_completion_rate
+    increase_female = female_test_completion_rate - female_control_completion_rate
+
+    # Create a DataFrame for visualization
+    completion_rates_df = pd.DataFrame({
+        'Group': ['Test - Male', 'Test - Female', 'Control - Male', 'Control - Female'],
+        'Completion Rate': [male_test_completion_rate, female_test_completion_rate, male_control_completion_rate, female_control_completion_rate]
+    })
+
+    # Display increases separately
+    print(f"Increase in completion rate for males (Test vs Control): {
+          increase_male:.2%}")
+    print(f"Increase in completion rate for females (Test vs Control): {
+          increase_female:.2%}")
+
+    return completion_rates_df
+
+
+"""Natalia's Functions related to Time spent per visit"""
+
+
+# (Nat)f_3.1.Calculate time spent per visit and determine if the visit was completed
+def calculate_time_and_completion(df):
+    # Creating the 'completed_yes_no' column
+    df['completed_yes_no'] = df['process_step'].apply(
+        lambda x: 1 if x == 'confirm' else 0)
+
+    # Grouping by 'visit_id' to calculate the time spent for each visit
     df['time_per_visit_in_sec'] = df.groupby('visit_id')['date_time'].transform(
         lambda x: (x.max() - x.min()).total_seconds())
 
-    # Converting time difference to seconds and changing the data type to int64
+    # Converting the time difference to seconds and changing the data type to int64
     df['time_per_visit_in_sec'] = df['time_per_visit_in_sec'].astype('int64')
 
     # Dropping duplicate rows based on 'visit_id' while keeping the first occurrence
     df = df.drop_duplicates(subset='visit_id')
 
-    # Dropping the 'date_time' column
-    df = df.drop(columns=['date_time'])
-
     return df
 
 
-# (Nat)Check if the time spent for each visit is normally distributed with Histogram and Boxplot to visually check for outliers
+# (Nat)f_3.2.Check if the time spent for each visit is normally distributed with Histogram and Boxplot to visually check for outliers
 def histogram_distribution_boxplot_outliers(df, column):
     # Set up the figure size and subplot layout
     # Adjust the figure size for better visibility
@@ -480,7 +619,7 @@ def histogram_distribution_boxplot_outliers(df, column):
     plt.show()
 
 
-# (Nat)Shapiro-Wilk test to check if data time_per_visit is normally distributed
+# (Nat)f_3.3.Shapiro-Wilk test to check if data time_per_visit is normally distributed
 def shapiro_wilk_test(df, column):
     # Ensure the DataFrame and the specified column exist
     if column in df.columns:
@@ -499,3 +638,204 @@ def shapiro_wilk_test(df, column):
             print("The data does not appear to be normally distributed (reject H0).")
     else:
         print(f"Column '{column}' not found in DataFrame.")
+
+
+# (Nat)f_3.5.Check if 'time_per_visit' is correlated with 'completed_yes_no'
+def calculate_correlation(df, col1, col2):
+    # Calculate Pearson correlation
+    correlation_coef, p_value = pearsonr(df[col1], df[col2])
+
+    # Print the results
+    print(f"Correlation Coefficient between {
+          col1} and {col2}: {correlation_coef}")
+    print(f"P-value: {p_value}")
+
+    # Interpretation of the correlation results
+    if p_value < 0.05:
+        if correlation_coef > 0:
+            print(
+                "There is a statistically positive correlation between the two variables.")
+        else:
+            print("There is a moderate negative correlation between the two variables. As the time per visit increases, the likelihood of the task being completed decreases")
+    else:
+        print(
+            "There is no statistically significant correlation between the two variables.")
+
+    return correlation_coef, p_value
+
+
+# (Nat)f_3.6.calculate the average time spent per visit_id for a given variation (after cleaning outliers)
+def average_time_spent_per_variation(df, column):
+    # Filter the DataFrame for the given variation
+    filtered_df = df[df['variation'] == variation]
+
+    # Calculate the average time spent
+    average_time = filtered_df['time_per_visit_in_sec'].mean()
+
+    return average_time
+
+
+# (Nat)f_3.7. Hypothesis: H0: The time has impact on completion rate. H1: The the increase in time, decrease the likelihood of the task being completed
+def perform_logistic_regression(df):
+    import statsmodels.api as sm
+    # Prepare the data
+    X = df[['time_per_visit_in_sec']]  # Predictor
+    X = sm.add_constant(X)  # Adds a constant term to the predictor
+    y = df['completed_yes_no']  # Response variable
+
+    # Fit the logistic regression model
+    model = sm.Logit(y, X).fit()
+
+    # Get the p-value for the predictor
+    p_value = model.pvalues['time_per_visit_in_sec']
+
+    # Interpretation based on p-value
+    alpha = 0.05  # significance level
+    if p_value < alpha:
+        interpretation = (
+            "Reject the null hypothesis: There is significant evidence that the time spent has an impact on completion rate.")
+    else:
+        interpretation = (
+            "Fail to reject the null hypothesis: There is no significant evidence that the time spent has an impact on completion rate.")
+
+    return {'Model Summary': model.summary(), 'P-value': p_value, 'Interpretation': interpretation}
+
+
+# (Nat)f_3.8.  % of client_counts dropped per_step
+def count_client_ids_per_process_step(df):
+    # Define the process steps of interest with 'confirm' being the last one
+    process_steps = ['start', 'step_1', 'step_2', 'step_3', 'confirm']
+
+    # Filter the dataframe to include only the rows with the specified process steps
+    filtered_df = df[df['process_step'].isin(process_steps)]
+
+    # Ensure the process steps are ordered correctly in the DataFrame
+    filtered_df['process_step'] = pd.Categorical(
+        filtered_df['process_step'], categories=process_steps, ordered=True)
+
+    # Group by 'variation' and 'process_step', and count distinct 'client_id' in each group
+    client_counts = (filtered_df.groupby(['variation', 'process_step'])['client_id']
+                     .nunique()
+                     .reset_index(name='client_count'))
+
+    # Calculate the total percentage drop within each 'variation'
+    result = []
+
+    for variation in client_counts['variation'].unique():
+        # Filter for the current variation
+        variation_df = client_counts[client_counts['variation'] == variation].copy(
+        )
+
+        # Get the count at the 'start' step
+        start_count = variation_df[variation_df['process_step']
+                                   == 'start']['client_count'].values
+        if len(start_count) > 0:
+            start_count = start_count[0]
+            variation_df['%_validated_the_step'] = (
+                variation_df['client_count'] / start_count) * 100
+
+            # Calculate the drop percentage relative to the previous step
+            variation_df['%_drop'] = variation_df['client_count'].pct_change() * \
+                100
+
+            # Set the drop percentage for the 'start' step to 0%
+            variation_df.loc[variation_df['process_step']
+                             == 'start', '%_drop'] = 0
+
+            # Round the percentage and drop percentage columns to 2 decimal places
+            variation_df['%_validated_the_step'] = variation_df['%_validated_the_step'].round(
+                2)
+            variation_df['%_drop'] = variation_df['%_drop'].round(2)
+
+        # Calculate the total drop percentage from 'start' to 'confirm'
+        total_drop = (variation_df[variation_df['process_step'] == 'confirm']['client_count'].values
+                      / start_count) * 100 - 100
+        total_drop = total_drop.round(2)
+
+        # Add a row for the total drop percentage
+        total_drop_row = pd.DataFrame({
+            'variation': [variation],
+            'process_step': ['total_drop'],
+            'client_count': [None],
+            '%_validated_the_step': [None],
+            '%_drop': [total_drop]
+        })
+
+        # Append the result for the current variation
+        result.append(
+            pd.concat([variation_df, total_drop_row], ignore_index=True))
+
+    # Concatenate results for all variations into a single DataFrame
+    final_df = pd.concat(result).reset_index(drop=True)
+
+    return final_df
+
+
+# (Nat)f_3.9. count_visit_ids_per_process_step
+def count_visit_ids_per_process_step(df):
+    # Define the process steps of interest with 'confirm' being the last one
+    process_steps = ['start', 'step_1', 'step_2', 'step_3', 'confirm']
+
+    # Filter the dataframe to include only the rows with the specified process steps
+    filtered_df = df[df['process_step'].isin(process_steps)]
+
+    # Ensure the process steps are ordered correctly in the DataFrame
+    filtered_df['process_step'] = pd.Categorical(
+        filtered_df['process_step'], categories=process_steps, ordered=True)
+
+    # Group by 'variation' and 'process_step', and count distinct 'visit_id' in each group
+    visit_counts = (filtered_df.groupby(['variation', 'process_step'])['visit_id']
+                    .nunique()
+                    .reset_index(name='visit_count'))
+
+    # Calculate the total percentage drop within each 'variation'
+    result = []
+
+    for variation in visit_counts['variation'].unique():
+        # Filter for the current variation
+        variation_df = visit_counts[visit_counts['variation']
+                                    == variation].copy()
+
+        # Get the count at the 'start' step
+        start_count = variation_df[variation_df['process_step']
+                                   == 'start']['visit_count'].values
+        if len(start_count) > 0:
+            start_count = start_count[0]
+            variation_df['percentage'] = (
+                variation_df['visit_count'] / start_count) * 100
+
+            # Calculate the drop percentage relative to the previous step
+            variation_df['drop_percentage'] = variation_df['visit_count'].pct_change(
+            ) * 100
+
+            # Set the drop percentage for the 'start' step to 0%
+            variation_df.loc[variation_df['process_step']
+                             == 'start', 'drop_percentage'] = 0
+
+            # Round the percentage and drop percentage columns to 2 decimal places
+            variation_df['percentage'] = variation_df['percentage'].round(2)
+            variation_df['drop_percentage'] = variation_df['drop_percentage'].round(
+                2)
+
+        # Calculate the total drop percentage from 'start' to 'confirm'
+        total_drop = (variation_df[variation_df['process_step'] == 'confirm']['visit_count'].values
+                      / start_count) * 100 - 100
+        total_drop = total_drop.round(2)
+
+        # Add a row for the total drop percentage
+        total_drop_row = pd.DataFrame({
+            'variation': [variation],
+            'process_step': ['total_drop'],
+            'visit_count': [None],
+            'percentage': [None],
+            'drop_percentage': [total_drop]
+        })
+
+        # Append the result for the current variation
+        result.append(
+            pd.concat([variation_df, total_drop_row], ignore_index=True))
+
+    # Concatenate results for all variations into a single DataFrame
+    final_df = pd.concat(result).reset_index(drop=True)
+
+    return final_df
