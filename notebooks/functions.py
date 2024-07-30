@@ -640,202 +640,170 @@ def shapiro_wilk_test(df, column):
         print(f"Column '{column}' not found in DataFrame.")
 
 
-# (Nat)f_3.5.Check if 'time_per_visit' is correlated with 'completed_yes_no'
-def calculate_correlation(df, col1, col2):
-    # Calculate Pearson correlation
-    correlation_coef, p_value = pearsonr(df[col1], df[col2])
 
-    # Print the results
-    print(f"Correlation Coefficient between {
-          col1} and {col2}: {correlation_coef}")
-    print(f"P-value: {p_value}")
+""" Tobias' Functions """
 
-    # Interpretation of the correlation results
-    if p_value < 0.05:
-        if correlation_coef > 0:
-            print(
-                "There is a statistically positive correlation between the two variables.")
-        else:
-            print("There is a moderate negative correlation between the two variables. As the time per visit increases, the likelihood of the task being completed decreases")
-    else:
-        print(
-            "There is no statistically significant correlation between the two variables.")
+""" Functions for Bivariate EDA """
+def create_correlation_matrix(df, cols_numerical):
 
-    return correlation_coef, p_value
+    correlation_matrix = df[cols_numerical].corr()
 
+    # Setting up the matplotlib figure with an appropriate size
+    plt.figure(figsize=(6, 5))
 
-# (Nat)f_3.6.calculate the average time spent per visit_id for a given variation (after cleaning outliers)
-def average_time_spent_per_variation(df, column):
-    # Filter the DataFrame for the given variation
-    filtered_df = df[df['variation'] == variation]
+    # Drawing the heatmap for the numerical columns
+    sns.heatmap(round(correlation_matrix,2), annot=True, cmap="coolwarm", vmin=-1, vmax=1)
 
-    # Calculate the average time spent
-    average_time = filtered_df['time_per_visit_in_sec'].mean()
+    plt.title("Correlation Heatmap for Selected Numerical Variables")
+    plt.show()
 
-    return average_time
+def plot_balance_vs_age(df):
+    df_age_bal = pd.DataFrame({'age': pd.pivot_table(df, index="age", values="balance", aggfunc='mean').index,
+                            'balance_mean': pd.pivot_table(df, index="age", values="balance", aggfunc='mean').balance})
+
+    fig, ax = plt.subplots()
+    sns.scatterplot(df, x="age", y="balance", ax=ax)
+    ax2 = ax.twinx()
+    sns.lineplot(df_age_bal, x="age", y="balance_mean", ax=ax2, color='orange')
+    fig.legend(labels=['balance','average balance'], bbox_to_anchor=(0.15, 0.85), loc='upper left', borderaxespad=0)
+    plt.show()
 
 
-# (Nat)f_3.7. Hypothesis: H0: The time has impact on completion rate. H1: The the increase in time, decrease the likelihood of the task being completed
-def perform_logistic_regression(df):
-    import statsmodels.api as sm
-    # Prepare the data
-    X = df[['time_per_visit_in_sec']]  # Predictor
-    X = sm.add_constant(X)  # Adds a constant term to the predictor
-    y = df['completed_yes_no']  # Response variable
+""" Functions for Experiment Evaluation """
 
-    # Fit the logistic regression model
-    model = sm.Logit(y, X).fit()
+def experiment_evalutaion(df):
+    df["is_female"] = df["gender"].apply(lambda x: True if x == "F" else False)
+    df_pivot = df.pivot_table(index='variation',
+               values=['age', 'tenure_year', 'number_of_accounts', 'balance', 'calls_6_month', 'logons_6_month', 'is_female'],
+               aggfunc="mean")
+    print('Bias Test vs Control: ')
+    variables = []
+    biases = []
+    for col in df_pivot.columns:
+        bias = df_pivot.loc["Test"][col]/df_pivot.loc["Control"][col]-1
+        variables.append(col)
+        biases.append(bias)
+    return pd.DataFrame({"variable": variables, "bias": biases})
 
-    # Get the p-value for the predictor
-    p_value = model.pvalues['time_per_visit_in_sec']
+def calculate_avg_daily_visits_per_time_period(df):
+    visits_total = (df["Control"] + df["Test"])
 
-    # Interpretation based on p-value
-    alpha = 0.05  # significance level
-    if p_value < alpha:
-        interpretation = (
-            "Reject the null hypothesis: There is significant evidence that the time spent has an impact on completion rate.")
-    else:
-        interpretation = (
-            "Fail to reject the null hypothesis: There is no significant evidence that the time spent has an impact on completion rate.")
+    visits_1 = visits_total.loc[(visits_total.index <= 13)].mean()
+    visits_2 = visits_total.loc[(visits_total.index <= 46) & (visits_total.index > 13)].mean()
+    visits_3 = visits_total.loc[(visits_total.index > 46)].mean()
 
-    return {'Model Summary': model.summary(), 'P-value': p_value, 'Interpretation': interpretation}
-
-
-# (Nat)f_3.8.  % of client_counts dropped per_step
-def count_client_ids_per_process_step(df):
-    # Define the process steps of interest with 'confirm' being the last one
-    process_steps = ['start', 'step_1', 'step_2', 'step_3', 'confirm']
-
-    # Filter the dataframe to include only the rows with the specified process steps
-    filtered_df = df[df['process_step'].isin(process_steps)]
-
-    # Ensure the process steps are ordered correctly in the DataFrame
-    filtered_df['process_step'] = pd.Categorical(
-        filtered_df['process_step'], categories=process_steps, ordered=True)
-
-    # Group by 'variation' and 'process_step', and count distinct 'client_id' in each group
-    client_counts = (filtered_df.groupby(['variation', 'process_step'])['client_id']
-                     .nunique()
-                     .reset_index(name='client_count'))
-
-    # Calculate the total percentage drop within each 'variation'
-    result = []
-
-    for variation in client_counts['variation'].unique():
-        # Filter for the current variation
-        variation_df = client_counts[client_counts['variation'] == variation].copy(
-        )
-
-        # Get the count at the 'start' step
-        start_count = variation_df[variation_df['process_step']
-                                   == 'start']['client_count'].values
-        if len(start_count) > 0:
-            start_count = start_count[0]
-            variation_df['%_validated_the_step'] = (
-                variation_df['client_count'] / start_count) * 100
-
-            # Calculate the drop percentage relative to the previous step
-            variation_df['%_drop'] = variation_df['client_count'].pct_change() * \
-                100
-
-            # Set the drop percentage for the 'start' step to 0%
-            variation_df.loc[variation_df['process_step']
-                             == 'start', '%_drop'] = 0
-
-            # Round the percentage and drop percentage columns to 2 decimal places
-            variation_df['%_validated_the_step'] = variation_df['%_validated_the_step'].round(
-                2)
-            variation_df['%_drop'] = variation_df['%_drop'].round(2)
-
-        # Calculate the total drop percentage from 'start' to 'confirm'
-        total_drop = (variation_df[variation_df['process_step'] == 'confirm']['client_count'].values
-                      / start_count) * 100 - 100
-        total_drop = total_drop.round(2)
-
-        # Add a row for the total drop percentage
-        total_drop_row = pd.DataFrame({
-            'variation': [variation],
-            'process_step': ['total_drop'],
-            'client_count': [None],
-            '%_validated_the_step': [None],
-            '%_drop': [total_drop]
-        })
-
-        # Append the result for the current variation
-        result.append(
-            pd.concat([variation_df, total_drop_row], ignore_index=True))
-
-    # Concatenate results for all variations into a single DataFrame
-    final_df = pd.concat(result).reset_index(drop=True)
-
-    return final_df
+    print(f"Average Daily Visits")
+    print(f"--------------------")
+    print(f"In the last two weeks of March: {int(round(visits_1,0))}")
+    print(f"In April: {int(round(visits_2,0))}")
+    print(f"In May and June: {int(round(visits_3,0))}")
 
 
-# (Nat)f_3.9. count_visit_ids_per_process_step
-def count_visit_ids_per_process_step(df):
-    # Define the process steps of interest with 'confirm' being the last one
-    process_steps = ['start', 'step_1', 'step_2', 'step_3', 'confirm']
+""" Functions for Error Rates """
 
-    # Filter the dataframe to include only the rows with the specified process steps
-    filtered_df = df[df['process_step'].isin(process_steps)]
+def calculate_avg_errors_per_visit(df):
+    df_visits = df[['unique_session_id', 'process_step', 'date_time', 'variation']].sort_values(by=["unique_session_id", "date_time"])
+    process_step_dict = {'start': 0, 'step_1': 1, 'step_2': 2, 'step_3': 3, 'confirm': 4}
+    df_visits['process_step_number'] = df_visits['process_step'].map(process_step_dict)
+    df_visits['previous_step_number'] = df_visits.groupby('unique_session_id')['process_step_number'].shift()
+    df_visits['step_diff'] = df_visits['process_step_number'] - df_visits['previous_step_number']
+    df_visits['step_back'] = df_visits['step_diff'].apply(lambda x: True if x < 0 else False)
+    total_errors_control = df_visits.loc[(df_visits["variation"] == "Control")]['step_back'].sum()
+    total_errors_test = df_visits.loc[(df_visits["variation"] == "Test")]['step_back'].sum()
+    total_visits_control = df_visits.loc[(df_visits["variation"] == "Control")]["unique_session_id"].nunique()
+    total_visits_test = df_visits.loc[(df_visits["variation"] == "Test")]["unique_session_id"].nunique()
+    error_rate_control = total_errors_control / total_visits_control
+    error_rate_test = total_errors_test / total_visits_test
+    return error_rate_control, error_rate_test
 
-    # Ensure the process steps are ordered correctly in the DataFrame
-    filtered_df['process_step'] = pd.Categorical(
-        filtered_df['process_step'], categories=process_steps, ordered=True)
+def calculate_avg_error_rates_per_time_period(df):
 
-    # Group by 'variation' and 'process_step', and count distinct 'visit_id' in each group
-    visit_counts = (filtered_df.groupby(['variation', 'process_step'])['visit_id']
-                    .nunique()
-                    .reset_index(name='visit_count'))
+    error_rate_control_1, error_rate_test_1 = calculate_avg_errors_per_visit(df)
+    error_rate_control_2, error_rate_test_2 = calculate_avg_errors_per_visit(df.loc[df["day_of_trial"] < 55])
+    error_rate_control_3, error_rate_test_3 = calculate_avg_errors_per_visit(df.loc[df["day_of_trial"] >= 55])
 
-    # Calculate the total percentage drop within each 'variation'
-    result = []
+    print(f"Daily Average Error Rates")
+    print(f"-------------------------")
+    print(f"")
+    print(f"In total")
+    print(f"Control: {round(error_rate_control_1*100, 1)}%")
+    print(f"Test: {round(error_rate_test_1*100, 1)}%")
+    print(f"")
+    print(f"Trial Day < 55")
+    print(f"Control: {round(error_rate_control_2*100, 1)}%")
+    print(f"Test: {round(error_rate_test_2*100, 1)}%")
+    print(f"")
+    print(f"Trial Day >= 55")
+    print(f"Control: {round(error_rate_control_3*100, 1)}%")
+    print(f"Test: {round(error_rate_test_3*100, 1)}%")
 
-    for variation in visit_counts['variation'].unique():
-        # Filter for the current variation
-        variation_df = visit_counts[visit_counts['variation']
-                                    == variation].copy()
+def calculate_grouped_error_rates(df, grouping_column):
+    error_rates = pd.DataFrame({"error_rate_control": df.groupby([grouping_column]).apply(lambda x: calculate_avg_errors_per_visit(x)[0], include_groups=False),
+                                "error_rate_test": df.groupby([grouping_column]).apply(lambda x: calculate_avg_errors_per_visit(x)[1], include_groups=False)})
+    return error_rates
 
-        # Get the count at the 'start' step
-        start_count = variation_df[variation_df['process_step']
-                                   == 'start']['visit_count'].values
-        if len(start_count) > 0:
-            start_count = start_count[0]
-            variation_df['percentage'] = (
-                variation_df['visit_count'] / start_count) * 100
+def plot_avg_errors_per_day(df):
+    fig, axs = plt.subplots(2, 2, figsize=(10, 8))
 
-            # Calculate the drop percentage relative to the previous step
-            variation_df['drop_percentage'] = variation_df['visit_count'].pct_change(
-            ) * 100
+    sns.scatterplot(df, ax=axs[0, 0])
+    axs[0, 0].set_title('Average Error Rate per Day')
+    axs[0, 0].set_xlabel('Day of Trial')
+    axs[0, 0].set_ylabel('Error Rate')
 
-            # Set the drop percentage for the 'start' step to 0%
-            variation_df.loc[variation_df['process_step']
-                             == 'start', 'drop_percentage'] = 0
+    sns.histplot(df, bins=20, ax=axs[0, 1])
+    axs[0, 1].set_title('Average Daily Error Rate Distribution')
+    axs[0, 1].set_xlabel('Errors Rate')
+    axs[0, 1].set_ylabel('Count')
 
-            # Round the percentage and drop percentage columns to 2 decimal places
-            variation_df['percentage'] = variation_df['percentage'].round(2)
-            variation_df['drop_percentage'] = variation_df['drop_percentage'].round(
-                2)
+    # Distribution < Day 55
+    sns.histplot(df.loc[(df.index < 55)], bins=15, ax=axs[1, 0])
+    axs[1, 0].set_title('Trial Day < 55')
+    axs[1, 0].set_xlabel('Errors Rate')
+    axs[1, 0].set_ylabel('Count')
 
-        # Calculate the total drop percentage from 'start' to 'confirm'
-        total_drop = (variation_df[variation_df['process_step'] == 'confirm']['visit_count'].values
-                      / start_count) * 100 - 100
-        total_drop = total_drop.round(2)
+    # Distribution >= Day 55
+    sns.histplot(df.loc[(df.index >= 55)], bins=15, ax=axs[1, 1])
+    axs[1, 1].set_title('Trial Day >= 55')
+    axs[1, 1].set_xlabel('Errors Rate')
+    axs[1, 1].set_ylabel('Count')
 
-        # Add a row for the total drop percentage
-        total_drop_row = pd.DataFrame({
-            'variation': [variation],
-            'process_step': ['total_drop'],
-            'visit_count': [None],
-            'percentage': [None],
-            'drop_percentage': [total_drop]
-        })
+    fig.tight_layout()
+    plt.show()
 
-        # Append the result for the current variation
-        result.append(
-            pd.concat([variation_df, total_drop_row], ignore_index=True))
+def errors_daily_to_csv(df):
+    # bring data into correct format for PowerBI
+    errors_daily_control = pd.DataFrame({"trial_day": df.index, "error_rate": df["error_rate_control"], "variation": "Control"})
+    errors_daily_test = pd.DataFrame({"trial_day": df.index, "error_rate": df["error_rate_test"], "variation": "Test"})
+    errors_daily_csv = pd.concat([errors_daily_control, errors_daily_test], axis=0, join='inner', ignore_index=True) #default 'outer'
 
-    # Concatenate results for all variations into a single DataFrame
-    final_df = pd.concat(result).reset_index(drop=True)
+    # save average errors per day to csv-file
+    errors_daily_csv.to_csv("../data/cleaned/errors_daily.csv", index=True, decimal=',', encoding='utf-8')
 
-    return final_df
+def error_rates_hypothesis_test_vs_control(df):
+
+    _, p_value_0 = stats.ttest_ind(df.loc[(df.index)]['error_rate_control'],
+                                df.loc[(df.index)]['error_rate_test'], equal_var=False, alternative='less')
+
+    _, p_value_1 = stats.ttest_ind(df.loc[(df.index < 55)]['error_rate_control'],
+                                df.loc[(df.index < 55)]['error_rate_test'], equal_var=False, alternative='less')
+
+    _, p_value_2 = stats.ttest_ind(df.loc[(df.index >= 55)]['error_rate_control'],
+                                df.loc[(df.index >= 55)]['error_rate_test'], equal_var=False, alternative='less')
+
+    print(f"p-values for H0")
+    print(f"---------------")
+    print(f"All Trial Days: {p_value_0:.{1}e}")
+    print(f"Trial Day < 55: {p_value_1:.{1}e}")
+    print(f"Trial Day >= 55: {p_value_2:.{1}e}")
+
+def error_rates_hypothesis_early_vs_late_test(df):
+    # Compare test group before day 55 and after
+    _, p_value = stats.ttest_ind(df.loc[(df.index < 55)]['error_rate_test'],
+                                df.loc[(df.index >= 55)]['error_rate_test'], equal_var=False)
+    print(f"p-value for H0: {p_value:.{1}e}")
+
+def error_rates_hypothesis_early_vs_late_control(df):
+    # Compare test group before day 55 and after
+    _, p_value = stats.ttest_ind(df.loc[(df.index < 55)]['error_rate_control'],
+                                df.loc[(df.index >= 55)]['error_rate_control'], equal_var=False)
+    print(f"p-value for H0: {p_value:.{1}e}")
