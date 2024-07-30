@@ -499,3 +499,22 @@ def shapiro_wilk_test(df, column):
             print("The data does not appear to be normally distributed (reject H0).")
     else:
         print(f"Column '{column}' not found in DataFrame.")
+
+
+
+""" Tobias' Functions """
+
+def calculate_avg_errors_per_visit(df):
+    df_visits = df[['unique_session_id', 'process_step', 'date_time', 'variation']].sort_values(by=["unique_session_id", "date_time"])
+    process_step_dict = {'start': 0, 'step_1': 1, 'step_2': 2, 'step_3': 3, 'confirm': 4}
+    df_visits['process_step_number'] = df_visits['process_step'].map(process_step_dict)
+    df_visits['previous_step_number'] = df_visits.groupby('unique_session_id')['process_step_number'].shift()
+    df_visits['step_diff'] = df_visits['process_step_number'] - df_visits['previous_step_number']
+    df_visits['step_back'] = df_visits['step_diff'].apply(lambda x: True if x < 0 else False)
+    total_errors_control = df_visits.loc[(df_visits["variation"] == "Control")]['step_back'].sum()
+    total_errors_test = df_visits.loc[(df_visits["variation"] == "Test")]['step_back'].sum()
+    total_visits_control = df_visits.loc[(df_visits["variation"] == "Control")]["unique_session_id"].nunique()
+    total_visits_test = df_visits.loc[(df_visits["variation"] == "Test")]["unique_session_id"].nunique()
+    error_rate_control = total_errors_control / total_visits_control
+    error_rate_test = total_errors_test / total_visits_test
+    return error_rate_control, error_rate_test
