@@ -10,6 +10,10 @@ from sklearn import datasets, model_selection, metrics
 from scipy.stats import ttest_ind
 from scipy import stats
 from scipy.stats import boxcox
+from scipy.stats import pearsonr
+from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import MinMaxScaler
+from scipy.stats import pearsonr
 
 
 # Data exploration
@@ -640,10 +644,229 @@ def shapiro_wilk_test(df, column):
         print(f"Column '{column}' not found in DataFrame.")
 
 
+# (Nat)f_3.6.calculate the average time spent per visit_id for a given variation (after cleaning outliers)
+def average_time_spent_per_variation_and_segment(df, column):
+    # Gets all unique variations from the specified column
+    variations = df[column].unique()
+    gender_results = []
+    age_results = []
+    tenure_results = []
+
+    for variation in variations:
+        filtered_df = df[df[column] == variation]
+
+        # Calculate average time by gender within each variation
+        gender_avg = filtered_df.groupby(
+            'gender')['time_per_visit_in_sec'].mean().reset_index()
+        gender_avg['Variation'] = variation
+        gender_avg.rename(
+            columns={'time_per_visit_in_sec': 'Average Time (seconds)'}, inplace=True)
+        gender_results.append(gender_avg)
+
+        # Calculate average time by age within each variation
+        age_avg = filtered_df.groupby(
+            'age')['time_per_visit_in_sec'].mean().reset_index()
+        age_avg['Variation'] = variation
+        age_avg.rename(
+            columns={'time_per_visit_in_sec': 'Average Time (seconds)'}, inplace=True)
+        age_results.append(age_avg)
+
+        # Calculate average time by tenure_month within each variation
+        tenure_avg = filtered_df.groupby('tenure_month')[
+            'time_per_visit_in_sec'].mean().reset_index()
+        tenure_avg['Variation'] = variation
+        tenure_avg.rename(
+            columns={'time_per_visit_in_sec': 'Average Time (seconds)'}, inplace=True)
+        tenure_results.append(tenure_avg)
+
+    # Convert results lists to DataFrames
+    df_gender_results = pd.concat(gender_results).reset_index(drop=True)
+    df_age_results = pd.concat(age_results).reset_index(drop=True)
+    df_tenure_results = pd.concat(tenure_results).reset_index(drop=True)
+
+    # Export to CSV files
+    df_gender_results.to_csv(
+        '../data/cleaned/average_time_by_gender.csv', index=False)
+    df_age_results.to_csv(
+        '../data/cleaned/average_time_by_age.csv', index=False)
+    df_tenure_results.to_csv(
+        '../data/cleaned/average_time_by_tenure.csv', index=False)
+
+    return df_gender_results, df_age_results, df_tenure_results
+
+
+# (Nat)f_3.7. count_visit_ids_per_process_step. % of dropped users on each step.
+def count_visit_ids_per_process_step(df):
+    # Define the process steps of interest with 'confirm' being the last one
+    process_steps = ['start', 'step_1', 'step_2', 'step_3', 'confirm']
+
+    # Filter the dataframe to include only the rows with the specified process steps
+    filtered_df = df[df['process_step'].isin(process_steps)]
+
+    # Ensure the process steps are ordered correctly in the DataFrame
+    filtered_df['process_step'] = pd.Categorical(
+        filtered_df['process_step'], categories=process_steps, ordered=True)
+
+    # Group by 'variation' and 'process_step', and count distinct 'visit_id' in each group
+    visit_counts = (filtered_df.groupby(['variation', 'process_step'])['visit_id']
+                    .nunique()
+                    .reset_index(name='visit_count'))
+
+    # Calculate the total percentage drop within each 'variation'
+    result = []
+
+    for variation in visit_counts['variation'].unique():
+        # Filter for the current variation
+        variation_df = visit_counts[visit_counts['variation']
+                                    == variation].copy()
+
+        # Get the count at the 'start' step
+        start_count = variation_df[variation_df['process_step']
+                                   == 'start']['visit_count'].values
+        if len(start_count) > 0:
+            start_count = start_count[0]
+            variation_df['percentage'] = (
+                variation_df['visit_count'] / start_count) * 100
+
+            # Calculate the drop percentage relative to the previous step
+            variation_df['drop_percentage'] = variation_df['visit_count'].pct_change(
+            ) * 100
+
+            # Set the drop percentage for the 'start' step to 0%
+            variation_df.loc[variation_df['process_step']
+                             == 'start', 'drop_percentage'] = 0
+
+            # Round the percentage and drop percentage columns to 2 decimal places
+            variation_df['percentage'] = variation_df['percentage'].round(2)
+            variation_df['drop_percentage'] = variation_df['drop_percentage'].round(
+                2)
+
+        # Calculate the total drop percentage from 'start' to 'confirm'
+        total_drop = (variation_df[variation_df['process_step'] == 'confirm']['visit_count'].values
+                      / start_count) * 100 - 100
+        total_drop = total_drop.round(2)
+
+        # Add a row for the total drop percentage
+        total_drop_row = pd.DataFrame({
+            'variation': [variation],
+            'process_step': ['total_drop'],
+            'visit_count': [None],
+            'percentage': [None],
+            'drop_percentage': [total_drop]
+        })
+
+        # Append the result for the current variation
+        result.append(
+            pd.concat([variation_df, total_drop_row], ignore_index=True))
+
+    # Concatenate results for all variations into a single DataFrame
+    final_df = pd.concat(result).reset_index(drop=True)
+
+    return final_df
+
+
+# (Nat)f_3.8. How the call center is solicited in each group? by which segments of users (age, gender) ?
+def total_calls_per_group_gender(df):
+    # Group by 'variation' and calculate the total calls in 'calls_6_month'
+    total_calls_variation = df.groupby(
+        'variation')['calls_6_month'].sum().reset_index()
+
+    # Calculate the percentage increase between 'Test' and 'Control' for overall calls
+    control_calls = total_calls_variation[total_calls_variation['variation']
+                                          == 'Control']['calls_6_month'].values[0]
+    test_calls = total_calls_variation[total_calls_variation['variation']
+                                       == 'Test']['calls_6_month'].values[0]
+    overall_percentage_increase = (
+        (test_calls - control_calls) / control_calls) * 100
+
+    # Group by 'variation' and 'gender' and calculate the total calls in 'calls_6_month'
+    total_calls_gender = df.groupby(['variation', 'gender'])[
+        'calls_6_month'].sum().reset_index()
+
+    # Calculate the percentage increase between 'Test' and 'Control' for each gender
+    gender_percentage_increase = {}
+    genders = df['gender'].unique()
+    for gender in genders:
+        control_calls_gender = total_calls_gender[(total_calls_gender['variation'] == 'Control') & (
+            total_calls_gender['gender'] == gender)]['calls_6_month'].values
+        test_calls_gender = total_calls_gender[(total_calls_gender['variation'] == 'Test') & (
+            total_calls_gender['gender'] == gender)]['calls_6_month'].values
+        # Ensure there is data for both groups
+        if len(control_calls_gender) > 0 and len(test_calls_gender) > 0:
+            control_calls_gender = control_calls_gender[0]
+            test_calls_gender = test_calls_gender[0]
+            gender_percentage_increase[gender] = (
+                (test_calls_gender - control_calls_gender) / control_calls_gender) * 100
+
+    # Create DataFrames for display and export
+    df_total_calls_variation = pd.DataFrame(total_calls_variation)
+    df_total_calls_gender = pd.DataFrame(total_calls_gender)
+    df_gender_percentage_increase = pd.DataFrame(list(
+        gender_percentage_increase.items()), columns=['Gender', 'Percentage Increase'])
+    df_overall_percentage_increase = pd.DataFrame({
+        'Comparison': ['Overall'],
+        'Percentage Increase': [overall_percentage_increase]
+    })
+
+    # Export DataFrames to CSV
+    df_total_calls_variation.to_csv(
+        '../data/cleaned/total_calls_variation.csv', index=False)
+    df_total_calls_gender.to_csv(
+        '../data/cleaned/total_calls_gender.csv', index=False)
+    df_gender_percentage_increase.to_csv(
+        '../data/cleaned/gender_calls_percentage_increase.csv', index=False)
+    df_overall_percentage_increase.to_csv(
+        '../data/cleaned/overall_calls_percentage_increase.csv', index=False)
+
+    return df_total_calls_variation, df_total_calls_gender, df_gender_percentage_increase, df_overall_percentage_increase
+
+
+# (Nat)f_3.9. How often the user in each group logons_6_month ? by which segments of users (gender) ?
+def total_logons_per_group_gender(df):
+    # Group by 'variation' and calculate the total logons in 'logons_6_month'
+    total_logons_variation = df.groupby(
+        'variation')['logons_6_month'].sum().reset_index()
+
+    # Calculate the percentage increase between 'Test' and 'Control' for overall logons
+    control_logons = total_logons_variation[total_logons_variation['variation']
+                                            == 'Control']['logons_6_month'].values[0]
+    test_logons = total_logons_variation[total_logons_variation['variation']
+                                         == 'Test']['logons_6_month'].values[0]
+
+    overall_percentage_increase = (
+        (test_logons - control_logons) / control_logons) * 100
+
+    # Group by 'variation' and 'gender' and calculate the total logons in 'logons_6_month'
+    total_logons_gender = df.groupby(['variation', 'gender'])[
+        'logons_6_month'].sum().reset_index()
+
+    # Calculate the percentage increase between 'Test' and 'Control' for each gender
+    gender_percentage_increase = {}
+    genders = df['gender'].unique()
+    for gender in genders:
+        control_logons_gender = total_logons_gender[(total_logons_gender['variation'] == 'Control') & (
+            total_logons_gender['gender'] == gender)]['logons_6_month'].values
+        test_logons_gender = total_logons_gender[(total_logons_gender['variation'] == 'Test') & (
+            total_logons_gender['gender'] == gender)]['logons_6_month'].values
+        # Ensure there is data for both groups
+        if len(control_logons_gender) > 0 and len(test_logons_gender) > 0:
+            control_logons_gender = control_logons_gender[0]
+            test_logons_gender = test_logons_gender[0]
+            gender_percentage_increase[gender] = (
+                (test_logons_gender - control_logons_gender) / control_logons_gender) * 100
+
+        # Export dataframes to CSV
+        total_logons_gender.to_csv(
+            '../data/cleaned/logons_by_gender.csv', index=False)
+
+    return total_logons_variation, total_logons_gender, overall_percentage_increase, gender_percentage_increase
+
 
 """ Tobias' Functions """
 
 """ Functions for Bivariate EDA """
+
+
 def create_correlation_matrix(df, cols_numerical):
 
     correlation_matrix = df[cols_numerical].corr()
@@ -652,30 +875,35 @@ def create_correlation_matrix(df, cols_numerical):
     plt.figure(figsize=(6, 5))
 
     # Drawing the heatmap for the numerical columns
-    sns.heatmap(round(correlation_matrix,2), annot=True, cmap="coolwarm", vmin=-1, vmax=1)
+    sns.heatmap(round(correlation_matrix, 2), annot=True,
+                cmap="coolwarm", vmin=-1, vmax=1)
 
     plt.title("Correlation Heatmap for Selected Numerical Variables")
     plt.show()
 
+
 def plot_balance_vs_age(df):
     df_age_bal = pd.DataFrame({'age': pd.pivot_table(df, index="age", values="balance", aggfunc='mean').index,
-                            'balance_mean': pd.pivot_table(df, index="age", values="balance", aggfunc='mean').balance})
+                               'balance_mean': pd.pivot_table(df, index="age", values="balance", aggfunc='mean').balance})
 
     fig, ax = plt.subplots()
     sns.scatterplot(df, x="age", y="balance", ax=ax)
     ax2 = ax.twinx()
     sns.lineplot(df_age_bal, x="age", y="balance_mean", ax=ax2, color='orange')
-    fig.legend(labels=['balance','average balance'], bbox_to_anchor=(0.15, 0.85), loc='upper left', borderaxespad=0)
+    fig.legend(labels=['balance', 'average balance'], bbox_to_anchor=(
+        0.15, 0.85), loc='upper left', borderaxespad=0)
     plt.show()
 
 
 """ Functions for Experiment Evaluation """
 
+
 def experiment_evalutaion(df):
     df["is_female"] = df["gender"].apply(lambda x: True if x == "F" else False)
     df_pivot = df.pivot_table(index='variation',
-               values=['age', 'tenure_year', 'number_of_accounts', 'balance', 'calls_6_month', 'logons_6_month', 'is_female'],
-               aggfunc="mean")
+                              values=['age', 'tenure_year', 'number_of_accounts',
+                                      'balance', 'calls_6_month', 'logons_6_month', 'is_female'],
+                              aggfunc="mean")
     print('Bias Test vs Control: ')
     variables = []
     biases = []
@@ -685,42 +913,59 @@ def experiment_evalutaion(df):
         biases.append(bias)
     return pd.DataFrame({"variable": variables, "bias": biases})
 
+
 def calculate_avg_daily_visits_per_time_period(df):
     visits_total = (df["Control"] + df["Test"])
 
     visits_1 = visits_total.loc[(visits_total.index <= 13)].mean()
-    visits_2 = visits_total.loc[(visits_total.index <= 46) & (visits_total.index > 13)].mean()
+    visits_2 = visits_total.loc[(visits_total.index <= 46) & (
+        visits_total.index > 13)].mean()
     visits_3 = visits_total.loc[(visits_total.index > 46)].mean()
 
     print(f"Average Daily Visits")
     print(f"--------------------")
-    print(f"In the last two weeks of March: {int(round(visits_1,0))}")
-    print(f"In April: {int(round(visits_2,0))}")
-    print(f"In May and June: {int(round(visits_3,0))}")
+    print(f"In the last two weeks of March: {int(round(visits_1, 0))}")
+    print(f"In April: {int(round(visits_2, 0))}")
+    print(f"In May and June: {int(round(visits_3, 0))}")
 
 
 """ Functions for Error Rates """
 
+
 def calculate_avg_errors_per_visit(df):
-    df_visits = df[['unique_session_id', 'process_step', 'date_time', 'variation']].sort_values(by=["unique_session_id", "date_time"])
-    process_step_dict = {'start': 0, 'step_1': 1, 'step_2': 2, 'step_3': 3, 'confirm': 4}
-    df_visits['process_step_number'] = df_visits['process_step'].map(process_step_dict)
-    df_visits['previous_step_number'] = df_visits.groupby('unique_session_id')['process_step_number'].shift()
-    df_visits['step_diff'] = df_visits['process_step_number'] - df_visits['previous_step_number']
-    df_visits['step_back'] = df_visits['step_diff'].apply(lambda x: True if x < 0 else False)
-    total_errors_control = df_visits.loc[(df_visits["variation"] == "Control")]['step_back'].sum()
-    total_errors_test = df_visits.loc[(df_visits["variation"] == "Test")]['step_back'].sum()
-    total_visits_control = df_visits.loc[(df_visits["variation"] == "Control")]["unique_session_id"].nunique()
-    total_visits_test = df_visits.loc[(df_visits["variation"] == "Test")]["unique_session_id"].nunique()
+    df_visits = df[['unique_session_id', 'process_step', 'date_time',
+                    'variation']].sort_values(by=["unique_session_id", "date_time"])
+    process_step_dict = {'start': 0, 'step_1': 1,
+                         'step_2': 2, 'step_3': 3, 'confirm': 4}
+    df_visits['process_step_number'] = df_visits['process_step'].map(
+        process_step_dict)
+    df_visits['previous_step_number'] = df_visits.groupby(
+        'unique_session_id')['process_step_number'].shift()
+    df_visits['step_diff'] = df_visits['process_step_number'] - \
+        df_visits['previous_step_number']
+    df_visits['step_back'] = df_visits['step_diff'].apply(
+        lambda x: True if x < 0 else False)
+    total_errors_control = df_visits.loc[(
+        df_visits["variation"] == "Control")]['step_back'].sum()
+    total_errors_test = df_visits.loc[(
+        df_visits["variation"] == "Test")]['step_back'].sum()
+    total_visits_control = df_visits.loc[(
+        df_visits["variation"] == "Control")]["unique_session_id"].nunique()
+    total_visits_test = df_visits.loc[(
+        df_visits["variation"] == "Test")]["unique_session_id"].nunique()
     error_rate_control = total_errors_control / total_visits_control
     error_rate_test = total_errors_test / total_visits_test
     return error_rate_control, error_rate_test
 
+
 def calculate_avg_error_rates_per_time_period(df):
 
-    error_rate_control_1, error_rate_test_1 = calculate_avg_errors_per_visit(df)
-    error_rate_control_2, error_rate_test_2 = calculate_avg_errors_per_visit(df.loc[df["day_of_trial"] < 55])
-    error_rate_control_3, error_rate_test_3 = calculate_avg_errors_per_visit(df.loc[df["day_of_trial"] >= 55])
+    error_rate_control_1, error_rate_test_1 = calculate_avg_errors_per_visit(
+        df)
+    error_rate_control_2, error_rate_test_2 = calculate_avg_errors_per_visit(
+        df.loc[df["day_of_trial"] < 55])
+    error_rate_control_3, error_rate_test_3 = calculate_avg_errors_per_visit(
+        df.loc[df["day_of_trial"] >= 55])
 
     print(f"Daily Average Error Rates")
     print(f"-------------------------")
@@ -737,10 +982,12 @@ def calculate_avg_error_rates_per_time_period(df):
     print(f"Control: {round(error_rate_control_3*100, 1)}%")
     print(f"Test: {round(error_rate_test_3*100, 1)}%")
 
+
 def calculate_grouped_error_rates(df, grouping_column):
     error_rates = pd.DataFrame({"error_rate_control": df.groupby([grouping_column]).apply(lambda x: calculate_avg_errors_per_visit(x)[0], include_groups=False),
                                 "error_rate_test": df.groupby([grouping_column]).apply(lambda x: calculate_avg_errors_per_visit(x)[1], include_groups=False)})
     return error_rates
+
 
 def plot_avg_errors_per_day(df):
     fig, axs = plt.subplots(2, 2, figsize=(10, 8))
@@ -770,25 +1017,31 @@ def plot_avg_errors_per_day(df):
     fig.tight_layout()
     plt.show()
 
+
 def errors_daily_to_csv(df):
     # bring data into correct format for PowerBI
-    errors_daily_control = pd.DataFrame({"trial_day": df.index, "error_rate": df["error_rate_control"], "variation": "Control"})
-    errors_daily_test = pd.DataFrame({"trial_day": df.index, "error_rate": df["error_rate_test"], "variation": "Test"})
-    errors_daily_csv = pd.concat([errors_daily_control, errors_daily_test], axis=0, join='inner', ignore_index=True) #default 'outer'
+    errors_daily_control = pd.DataFrame(
+        {"trial_day": df.index, "error_rate": df["error_rate_control"], "variation": "Control"})
+    errors_daily_test = pd.DataFrame(
+        {"trial_day": df.index, "error_rate": df["error_rate_test"], "variation": "Test"})
+    errors_daily_csv = pd.concat([errors_daily_control, errors_daily_test],
+                                 axis=0, join='inner', ignore_index=True)  # default 'outer'
 
     # save average errors per day to csv-file
-    errors_daily_csv.to_csv("../data/cleaned/errors_daily.csv", index=True, decimal=',', encoding='utf-8')
+    errors_daily_csv.to_csv(
+        "../data/cleaned/errors_daily.csv", index=True, decimal=',', encoding='utf-8')
+
 
 def error_rates_hypothesis_test_vs_control(df):
 
     _, p_value_0 = stats.ttest_ind(df.loc[(df.index)]['error_rate_control'],
-                                df.loc[(df.index)]['error_rate_test'], equal_var=False, alternative='less')
+                                   df.loc[(df.index)]['error_rate_test'], equal_var=False, alternative='less')
 
     _, p_value_1 = stats.ttest_ind(df.loc[(df.index < 55)]['error_rate_control'],
-                                df.loc[(df.index < 55)]['error_rate_test'], equal_var=False, alternative='less')
+                                   df.loc[(df.index < 55)]['error_rate_test'], equal_var=False, alternative='less')
 
     _, p_value_2 = stats.ttest_ind(df.loc[(df.index >= 55)]['error_rate_control'],
-                                df.loc[(df.index >= 55)]['error_rate_test'], equal_var=False, alternative='less')
+                                   df.loc[(df.index >= 55)]['error_rate_test'], equal_var=False, alternative='less')
 
     print(f"p-values for H0")
     print(f"---------------")
@@ -796,14 +1049,16 @@ def error_rates_hypothesis_test_vs_control(df):
     print(f"Trial Day < 55: {p_value_1:.{1}e}")
     print(f"Trial Day >= 55: {p_value_2:.{1}e}")
 
+
 def error_rates_hypothesis_early_vs_late_test(df):
     # Compare test group before day 55 and after
     _, p_value = stats.ttest_ind(df.loc[(df.index < 55)]['error_rate_test'],
-                                df.loc[(df.index >= 55)]['error_rate_test'], equal_var=False)
+                                 df.loc[(df.index >= 55)]['error_rate_test'], equal_var=False)
     print(f"p-value for H0: {p_value:.{1}e}")
+
 
 def error_rates_hypothesis_early_vs_late_control(df):
     # Compare test group before day 55 and after
     _, p_value = stats.ttest_ind(df.loc[(df.index < 55)]['error_rate_control'],
-                                df.loc[(df.index >= 55)]['error_rate_control'], equal_var=False)
+                                 df.loc[(df.index >= 55)]['error_rate_control'], equal_var=False)
     print(f"p-value for H0: {p_value:.{1}e}")
