@@ -1,0 +1,5 @@
+,step,Control (s),Test (s)
+0,start - step 1,18.08,3.28
+1,step 1 - step 2,34.31,37.49
+2,step 2 - step 3,94.65,92.78
+3,step 3 - confirm,135.66,143.24
