@@ -918,9 +918,9 @@ def calculate_avg_daily_visits_per_time_period(df):
     visits_total = (df["Control"] + df["Test"])
 
     visits_1 = visits_total.loc[(visits_total.index <= 13)].mean()
-    visits_2 = visits_total.loc[(visits_total.index <= 46) & (
+    visits_2 = visits_total.loc[(visits_total.index <= 41) & (
         visits_total.index > 13)].mean()
-    visits_3 = visits_total.loc[(visits_total.index > 46)].mean()
+    visits_3 = visits_total.loc[(visits_total.index > 41)].mean()
 
     print(f"Average Daily Visits")
     print(f"--------------------")
