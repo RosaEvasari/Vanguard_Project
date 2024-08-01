@@ -123,7 +123,7 @@ def plot_distributions_categorical(df, cols):
 """ Natalia's functions """
 
 
-# (Nat)f_1.1.Perform initial data cheking:
+# (Nat)f_1.1.Perform initial data checking:
 def initial_data_checking(df):
     # Print the shape of the DataFrame (number of rows and columns)
     print("\nShape of the DataFrame:\n")
@@ -234,6 +234,54 @@ def merge_3(df_demo, df_experiment, df_web):
     final_merged_df = pd.merge(merged_df, df_web, on='client_id')
 
     return final_merged_df
+
+
+# (Nat)f_1.8.Histogram for visual inspection of distribution and outliers
+def histogram_with_density_plot(df, column):
+    plt.figure(figsize=(10, 4))
+    plt.subplot(1, 2, 1)  # 1 row, 2 columns, 1st subplot
+    # Use the 'column' parameter to reference the DataFrame column
+    sns.histplot(df[column], bins=100, kde=True)
+    plt.title(f'Histogram with Density Plot for {column}')
+    plt.show()
+
+
+# (Nat)f_1.9.Boxplot to visually check for outliers
+def plot_boxplot(df, column):
+    # Setting the figure size for better visibility
+    plt.figure(figsize=(10, 4))
+    plt.subplot(1, 2, 2)  # 1 row, 2 columns, 2nd subplot
+    sns.boxplot(y=df[column])
+    plt.title(f'Boxplot for {column}')
+
+    plt.tight_layout()  # Adjusts plot parameters for better layout
+    plt.show()
+
+
+# (Nat)f_2.0.Shapiro-Wilk test for normality
+def shapiro_wilk_test(df, column):
+    # Extract the column data
+    data = df[column]
+
+    # Perform the Shapiro-Wilk test
+    stat, p = stats.shapiro(data)
+
+    # Display the results
+    print(f'Shapiro-Wilk Test for {column}: Statistics={stat:.3f}, p={p:.3f}')
+    if p > 0.05:
+        print("The data appears to be normally distributed (fail to reject H0).")
+    else:
+        print("The data does not appear to be normally distributed (reject H0).")
+
+
+# (Nat)f_2.1.0. Load and merge data
+def load_and_merge_datasets():
+    df_demo = pd.read_csv('../data/cleaned/df_final_demo_cleaned.csv')
+    df_experiment = pd.read_csv(
+        '../data/cleaned/df_final_experiment_clients_cleaned.csv')
+    df_web = pd.read_csv('../data/cleaned/df_final_web_data_cleaned.csv')
+    merged = merge_3(df_demo, df_experiment, df_web)
+    return merged
 
 
 # (Nat)f_2.1.Convert to datetime
@@ -419,9 +467,8 @@ def normalize_column(df, column_name):
 
     return df
 
+
 # (Nat)f_2.10.1.Hypothesis testing for Completion Rate: 'Test' group has completion rate from the A/B test more than 5% then 'Control' group.
-
-
 def perform_two_sample_t_test(df):
     # Extract the completion rates for Control and Test groups
     control_rate = df[df['Variation'] ==
@@ -550,26 +597,34 @@ def calculate_completion_rate_gender(df):
         # Get the total number of unique visit_ids in the gender-specific group
         total_visits = gender_group['visit_id'].nunique()
         # Calculate the completion rate
-        completion_rate = completed_visits / total_visits if total_visits > 0 else 0
+        completion_rate = (completed_visits /
+                           total_visits) if total_visits > 0 else 0
         return completion_rate
 
-    # Calculate completion rates for males and females in both Test and Control groups
-    male_test_completion_rate = get_gender_completion_rate(test_group, 'M')
-    female_test_completion_rate = get_gender_completion_rate(test_group, 'F')
-    male_control_completion_rate = get_gender_completion_rate(
-        control_group, 'M')
-    female_control_completion_rate = get_gender_completion_rate(
-        control_group, 'F')
+    # Create a DataFrame for visualization with structured columns
+    data = [
+        {'variation': 'Test', 'gender': 'Male',
+            'completion_rate': get_gender_completion_rate(test_group, 'M')},
+        {'variation': 'Test', 'gender': 'Female',
+            'completion_rate': get_gender_completion_rate(test_group, 'F')},
+        {'variation': 'Control', 'gender': 'Male',
+            'completion_rate': get_gender_completion_rate(control_group, 'M')},
+        {'variation': 'Control', 'gender': 'Female',
+            'completion_rate': get_gender_completion_rate(control_group, 'F')}
+    ]
+    completion_rates_df = pd.DataFrame(data)
 
     # Calculate the increase in completion rates
-    increase_male = male_test_completion_rate - male_control_completion_rate
-    increase_female = female_test_completion_rate - female_control_completion_rate
+    increase_male = data[0]['completion_rate'] - data[2]['completion_rate']
+    increase_female = data[1]['completion_rate'] - data[3]['completion_rate']
 
-    # Create a DataFrame for visualization
-    completion_rates_df = pd.DataFrame({
-        'Group': ['Test - Male', 'Test - Female', 'Control - Male', 'Control - Female'],
-        'Completion Rate': [male_test_completion_rate, female_test_completion_rate, male_control_completion_rate, female_control_completion_rate]
-    })
+    # Print increases separately for analysis
+    print(f"Increase in completion rate for males (Test vs Control): {
+          increase_male:.2%}")
+    print(f"Increase in completion rate for females (Test vs Control): {
+          increase_female:.2%}")
+
+    return completion_rates_df
 
     # Display increases separately
     print(f"Increase in completion rate for males (Test vs Control): {
