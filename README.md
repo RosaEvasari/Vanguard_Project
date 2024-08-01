@@ -34,9 +34,36 @@ This comprehensive set of fields will provide you better understandings of the d
 - **Error Rates**: If there’s a step where users go back to a previous step, it may indicate confusion or an error. You should consider moving from a later step to an earlier one as an error.
 
 ## Hypotheses
+**1. The new feature would encourage more clients to complete the process** <br>
+**KPI**: completion rate during test period.
+
+The completion rate indicates the number of visits which reach 'confirm' step. This analysis takes into account the completion rate per day, which in the end will be concluded by completion rate over the test period. In this case, as shown by the experiment evaluation, the analysis will focus only on the first 55 days.
+<br>
+Vanguard has set the minimum increase in completion rate at 5%. In other words, if the new design doesn't lead to at least this level of improvement, it may not be justifiable from a cost perspective.
+<br>
+![Completion Rate before 55 days](f'../Completion_rate_during_test_period_55_days.png')
+
+Based on the result, it shows that the completion rate of the test group is approximately 10% higher than the control group. It means that it has exceeded the threshold set by the company.
+
+**2. The new feature would reduce the time spent on each step of the process, leading to more efficient completion** <br>
+**KPI**: Time spent on each step.
+
+In this analysis, we calculate the time spent on each step per visit for both groups. 
+
+The figure below shows that the control group moves slightly faster on average. The total time spent for control and test group is 309.68 s and 315.32 s, respectively.
+
+(figure)
+
+Furthermore, we analyse the visitor retention per step. The figure below shows that the retention improved from 51.72% to 65.42%. 
+- There is significant progress in users retention on 'step_1' and 'confirm'.
+- The reduction of time spent on ‘step_1’ significantly reduced the the drop of visitors retention (14.7 % compare to 23.8% in control group)
+
+(figure)
+
 
 
 ## Conclusion
+
 
 
 ## Streamlit App
