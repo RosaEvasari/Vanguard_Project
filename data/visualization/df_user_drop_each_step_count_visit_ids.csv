@@ -1,0 +1,13 @@
+variation,process_step,visit_count,percentage,drop_percentage
+Control,start,30910,100.0,0.0
+Control,step_1,23548,76.18,-23.82
+Control,step_2,20138,65.15,-14.48
+Control,step_3,18300,59.2,-9.13
+Control,confirm,15988,51.72,-12.63
+Control,total_drop,,,[-48.28]
+Test,start,33157,100.0,0.0
+Test,step_1,28285,85.31,-14.69
+Test,step_2,24503,73.9,-13.37
+Test,step_3,22186,66.91,-9.46
+Test,confirm,21692,65.42,-2.23
+Test,total_drop,,,[-34.58]

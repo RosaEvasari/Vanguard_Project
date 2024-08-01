@@ -1,5 +1,0 @@
-Version:
-pandas 2.2.2 (it already includes numpy)
-python 3.12.4
-ipykernel 6.29.5
-seaborn ???

@@ -10,11 +10,10 @@ from sklearn import datasets, model_selection, metrics
 from scipy.stats import ttest_ind
 from scipy import stats
 from scipy.stats import boxcox
-from scipy.stats import pearsonr
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import MinMaxScaler
 from scipy.stats import pearsonr
-
+import scipy.stats as st
 
 # Data exploration
 
@@ -118,6 +117,135 @@ def plot_distributions_categorical(df, cols):
         sns.countplot(data=df, x=col, ax=axs[k])
         k += 1
     fig.tight_layout()
+
+
+"""Functions for Completion Rate analysis"""
+
+
+def main_df_hypothesis_1(df1, df2, df3, column):
+
+    # merge all the dataframes
+    df_merge_1 = pd.merge(df1, df2, on=column, how='inner')
+    df_merge_2 = pd.merge(df_merge_1, df3, on=column, how='inner')
+    
+    # format datetime and add date and month column
+    df_merge_2['date_time'] = pd.to_datetime(df_merge_2['date_time'], errors='coerce')
+    df_merge_2['date'] = df_merge_2['date_time'].dt.date
+    df_merge_2['date'] = pd.to_datetime(df_merge_2['date'], errors='coerce')
+    df_merge_2['month'] = df_merge_2['date_time'].dt.strftime('%B')
+    
+    # drop irrelevent column
+    irrelevant_columns = ['tenure_month', 'balance', 'number_of_accounts', 'calls_6_month', 'logons_6_month', 'date_time']
+    df_merge_2 = df_merge_2.drop(columns=irrelevant_columns).drop_duplicates().reset_index(drop=True)
+
+    # categorize process_step
+    df_merge_2['step_check'] = df_merge_2.groupby('visit_id')['process_step'].transform(lambda x: 'confirm' if 'confirm' in x.values else 'no_confirm')
+    df_merge_2 = df_merge_2.drop(columns='process_step').drop_duplicates().reset_index(drop=True)
+
+    return df_merge_2
+
+
+def df_control_general(df):
+
+    # create dataframe for 'Control' group
+    df_control = df[df['variation'] == 'Control']
+    df_control = df_control.groupby(['variation','date','month','step_check'])['visit_id'].count().reset_index()
+    df_control = df_control.pivot(index=['variation','date','month'], columns='step_check', values='visit_id').fillna(0).reset_index()
+
+    return df_control
+
+def df_test_general(df):
+
+    # create dataframe for 'Test' group
+    df_test = df[df['variation'] == 'Test']
+    df_test = df_test.groupby(['variation','date','month','step_check'])['visit_id'].count().reset_index()
+    df_test = df_test.pivot(index=['variation','date','month'], columns='step_check', values='visit_id').fillna(0).reset_index()
+
+    return df_test
+
+
+def normality_check(df, column_name):
+
+    column = df[column_name]
+
+    # Histogram plot to understand the distribution of data
+    plt.figure(figsize=(12, 6))
+    plt.subplot(1, 2, 1)
+    sns.histplot(column, kde=True, bins=30, color="salmon")
+    plt.title(f'Histogram of {column_name}')
+
+    # Q-Q plot 
+    plt.subplot(1, 2, 2)
+    stats.probplot(column, dist="norm", plot=plt)
+    stats.probplot(column, plot=plt)
+    plt.title(f'Q-Q Plot of {column_name}')
+
+    plt.tight_layout()
+    plt.show()
+
+    # Conducting the Kolmogorov-Smirnov test 
+    standardized_column = (column - column.mean()) / column.std()
+    ks_test_statistic, ks_p_value = stats.kstest(standardized_column, 'norm')
+
+    ks_test_statistic, ks_p_value
+
+    # print the test result
+    if ks_p_value < 0.05:
+        print('The test results indicate that the distribution is significantly different from a normal distribution.')
+    else:
+        print('The test results indicate that the distribution is not significantly different from a normal distribution.')
+
+def data_normalization(df, column_name):
+
+    # transform the data
+    log_transformed_column = np.log1p(df[column_name])
+    standardized_log_column = (log_transformed_column - log_transformed_column.mean()) / log_transformed_column.std()
+
+    # Plotting histogram for transformed 'column_name'
+    plt.figure(figsize=(12, 6))
+    plt.subplot(1, 2, 1)
+    sns.histplot(standardized_log_column, kde=True, bins=50, color="skyblue")
+    plt.title(f'Histogram of normalized {column_name}')
+
+    # Q-Q plot
+    plt.subplot(1, 2, 2)
+    stats.probplot(standardized_log_column, plot=plt)
+    plt.title(f'Q-Q Plot of normalized {column_name}')
+    
+    plt.tight_layout()
+    plt.show()
+
+    # Conducting the Kolmogorov-Smirnov test on the log-transformed and standardized column
+    ks_test_statistic_after_transformation, ks_p_value_after_transformation = stats.kstest(standardized_log_column, 'norm')
+
+    ks_test_statistic_after_transformation, ks_p_value_after_transformation
+
+    # update the standardized column
+    scaler = StandardScaler()
+    log_transformed_standardized = scaler.fit_transform(log_transformed_column.values.reshape(-1, 1) ) # standardize log_transformed_column
+    
+    df[column_name] = scaler.inverse_transform(log_transformed_standardized)
+
+
+def hypothesis_testing(df1, column_name1, df2, column_name2, alpha):
+
+    # Set Hypothesis
+
+    #H0 total confirmation of test group >= total confirmation of control group
+    #H1 total confirmation of test group < total confirmation of control group
+
+    df_confirmation_test = df1[column_name1]
+    df_confirmation_control = df2[column_name2]
+
+    t_stat, pvalue = st.ttest_ind(df_confirmation_test,df_confirmation_control, alternative="less")
+
+    print('pvalue is', pvalue)
+
+    if pvalue < alpha:
+        print("Fail to reject null hypothesis.")
+    else:
+        print("Reject null hypothesis.")
+
 
 
 """ Natalia's functions """
@@ -973,9 +1101,9 @@ def calculate_avg_daily_visits_per_time_period(df):
     visits_total = (df["Control"] + df["Test"])
 
     visits_1 = visits_total.loc[(visits_total.index <= 13)].mean()
-    visits_2 = visits_total.loc[(visits_total.index <= 46) & (
+    visits_2 = visits_total.loc[(visits_total.index <= 41) & (
         visits_total.index > 13)].mean()
-    visits_3 = visits_total.loc[(visits_total.index > 46)].mean()
+    visits_3 = visits_total.loc[(visits_total.index > 41)].mean()
 
     print(f"Average Daily Visits")
     print(f"--------------------")
@@ -1084,7 +1212,7 @@ def errors_daily_to_csv(df):
 
     # save average errors per day to csv-file
     errors_daily_csv.to_csv(
-        "../data/cleaned/errors_daily.csv", index=True, decimal=',', encoding='utf-8')
+        "../data/visualization/errors_daily.csv", index=True, decimal=',', encoding='utf-8')
 
 
 def error_rates_hypothesis_test_vs_control(df):
