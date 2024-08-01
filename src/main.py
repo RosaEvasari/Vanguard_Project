@@ -109,3 +109,16 @@ if __name__ == "__main__":
 
     # Visits and Error Rates per Day
     errors_and_visits_daily_to_csv(df)
+
+
+    ##### CREATE DATAFRAME FOR COMPLETION RATE HYPOTHESIS AND SAVE CSV-FILE FOR THE DASHBOARD####
+
+    df_main = main_df_hypothesis_1(df_demo, df_clients, df_web_data, 'client_id')
+    df_control = df_control_general(df_main)
+    df_test = df_test_general(df_main)
+
+    df_control_before_x, df_control_after_x, df_test_before_x, df_test_after_x = create_df_for_summary(df_control, df_test, 'date', 53)
+    summary = summary_completion_rate(df_control, df_test, df_control_before_x, df_control_after_x, df_test_before_x, df_test_after_x)
+   
+    # Save summary to csv
+    summary_completion_rate_to_csv(summary)

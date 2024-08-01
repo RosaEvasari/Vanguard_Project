@@ -246,3 +246,49 @@ def hypothesis_testing(df1, column_name1, df2, column_name2, alpha):
         print("Fail to reject null hypothesis.")
     else:
         print("Reject null hypothesis.")
+
+def create_df_for_summary(df_control, df_test, date_column, day):
+    start_date = df_control[date_column].min()
+    day_x = start_date + pd.Timedelta(days=day)
+    end_date = df_control[date_column].max()
+
+    df_control_before_x = df_control[(df_control[date_column] >= start_date) & (df_control[date_column] < day_x)].reset_index()
+    df_control_after_x = df_control[(df_control[date_column] >= day_x) & (df_control[date_column] <= end_date)].reset_index()
+
+    df_test_before_x = df_test[(df_test[date_column] >= start_date) & (df_test[date_column] < day_x)].reset_index()
+    df_test_after_x = df_test[(df_test[date_column] >= day_x) & (df_test[date_column] <= end_date)].reset_index()
+
+    df_control_before_x = df_control_before_x.pivot_table(index=['month'], values=['confirm','no_confirm'], aggfunc='sum').reset_index()
+    df_test_before_x = df_test_before_x.pivot_table(index=['month'], values=['confirm','no_confirm'], aggfunc='sum').reset_index()
+
+    df_control_after_x = df_control_after_x.pivot_table(index=['month'], values=['confirm','no_confirm'], aggfunc='sum').reset_index()
+    df_test_after_x = df_test_after_x.pivot_table(index=['month'], values=['confirm','no_confirm'], aggfunc='sum').reset_index()
+    
+    return df_control_before_x, df_control_after_x, df_test_before_x, df_test_after_x 
+
+def summary_completion_rate(df_control, df_test, df_control_before_x, df_control_after_x, df_test_before_x, df_test_after_x):
+
+    # summary of completion rate during full test period
+    yc_general = round(df_control['confirm'].sum()/(df_control['confirm'].sum() + df_control['no_confirm'].sum())*100,1)
+    yt_general = round(df_test['confirm'].sum()/(df_test['confirm'].sum() + df_test['no_confirm'].sum())*100,1)
+
+    # summary of completion rate before 55 days
+    yc_before_x = round(df_control_before_x['confirm'].sum()/(df_control_before_x['confirm'].sum() + df_control_before_x['no_confirm'].sum())*100,1)
+    yt_before_x = round(df_test_before_x['confirm'].sum()/(df_test_before_x['confirm'].sum() + df_test_before_x['no_confirm'].sum())*100,1)
+
+    # summary of completion rate after 55 days
+    yc_after_x = round(df_control_after_x['confirm'].sum()/(df_control_after_x['confirm'].sum() + df_control_after_x['no_confirm'].sum())*100,1)
+    yt_after_x = round(df_test_after_x['confirm'].sum()/(df_test_after_x['confirm'].sum() + df_test_after_x['no_confirm'].sum())*100,1)
+
+    summary_completion_rate = pd.DataFrame({
+    'variation': ['Control', 'Test'],
+    'Test Period': [f'{yc_general}%', f'{yt_general}%'],
+    'First 55 days': [f'{yc_before_x}%', f'{yt_before_x}%'],
+    'After 55 days': [f'{yc_after_x}%', f'{yt_after_x}%']
+    })
+
+    return summary_completion_rate
+
+def summary_completion_rate_to_csv(summary_completion_rate):
+
+    summary_completion_rate.to_csv(f'../../data/visualization/h1_summary.csv')

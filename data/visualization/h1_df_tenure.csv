@@ -1,5 +1,5 @@
 ,variation,tenure_type,confirm,no_confirm,percentage_per_tenure_type
-0,Control,long-standing,8356,8629,0.49
-1,Control,new,7781,7523,0.51
-2,Test,long-standing,11366,8160,0.58
-3,Test,new,10482,7264,0.59
+0,Control,long-standing,8356,8629,49.2
+1,Control,new,7781,7523,50.84
+2,Test,long-standing,11366,8160,58.21
+3,Test,new,10482,7264,59.07

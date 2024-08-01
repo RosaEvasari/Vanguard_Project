@@ -1,9 +1,9 @@
 ,variation,age_group,confirm,no_confirm,percentage_per_age_group
-0,Control,Teenagers,107,94,0.53
-1,Control,Young Adults,5483,4715,0.54
-2,Control,Adults,6451,5962,0.52
-3,Control,Seniors,4096,5381,0.43
-4,Test,Teenagers,146,87,0.63
-5,Test,Young Adults,7470,4420,0.63
-6,Test,Adults,8347,5943,0.58
-7,Test,Seniors,5885,4974,0.54
+0,Control,Teenagers,107,94,53.23
+1,Control,Young Adults,5483,4715,53.77
+2,Control,Adults,6451,5962,51.97
+3,Control,Seniors,4096,5381,43.22
+4,Test,Teenagers,146,87,62.66
+5,Test,Young Adults,7470,4420,62.83
+6,Test,Adults,8347,5943,58.41
+7,Test,Seniors,5885,4974,54.19
