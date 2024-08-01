@@ -3,7 +3,10 @@
 ## Project Overview
 The digital world is evolving, and so are Vanguard’s clients. Vanguard is US-based investment management company. Vanguard believed that a more intuitive and modern User Interface (UI), coupled with timely in-context prompts (cues, messages, hints, or instructions provided to users directly within the context of their current task or action), could make the online process smoother for clients. The critical question was: **Would these changes encourage more clients to complete the process?**
 
-Vanguard just launched an exciting digital experiment. Our goal as Customer Experience team is helping the company to uncover the results of the experiment.
+Vanguard just launched an exciting digital experiment. Our goal as Customer Experience team is helping the company to uncover the results of the experiment. To address the critical question, we have developed a set of hypotheses to guide our analysis and determine whether the new UI and in-context prompts effectively enhance client engagement and completion rates as follows: <br>
+1. The new feature would encourage more clients to complete the process. <br>
+2. The new feature would reduce the time spent on each step of the process, leading to more efficient completion. <br>
+3. The new feature would reduce the error rates during the process, leading to smoother completion. <br>
 
 ## Data
 We use three datasets provided by the company as follows:<br>
@@ -28,24 +31,31 @@ This comprehensive set of fields will provide you better understandings of the d
 - **calls_6_month**: Records the number of times the client reached out over a call in the past six months.
 - **logons_6_month**: Reflects the frequency with which the client logged onto Vanguard’s platform over the last six months.
 
-## Key Performance Indicator (KPI) 
-- **Completion Rate**: The proportion of users who reach the final ‘confirm’ step.
-- **Time Spent on Each Step**: The average duration users spend on each step.
-- **Error Rates**: If there’s a step where users go back to a previous step, it may indicate confusion or an error. You should consider moving from a later step to an earlier one as an error.
+## Experiment Evaluation
+As part of the analysis, it's required to carry out experiment evaluation related to design effectiveness and duration of experiment. 
 
-## Hypotheses
+**1. Design Effectiveness** <br>
+   It's important to understand whether there is bias in the test and control group for the different variables, such as age, balance, calls_6_month, gender, logons_6_month, number_of_accounts, and tenure_year. We observe that the maximum bias is 4% which appears in the gender categeory. In general, the bias is acceptable for the experiment.
+
+**2. Duration of experiment** <br>
+  We also evaluate the number of visits per day for both groups. The result of the analysis shows that the access rate to the page is relatively low during the first two weeks. In addition, the access rate increases significantly after the first two weeks and the access rate in April shows very distinct spikes on the Wednesdays. The high acticity rate in April is probably due to the deadline for filing federal income tax returns in the U.S. Furthermore, the rate decreases in June, but it remains on a relatively steady number that is higher than for the first two weeks.
+
+
+## Hypotheses and Key Performance Indicator (KPI) 
 **1. The new feature would encourage more clients to complete the process** <br>
+
 **KPI**: completion rate during test period.
 
 The completion rate indicates the number of visits which reach 'confirm' step. This analysis takes into account the completion rate per day, which in the end will be concluded by completion rate over the test period. In this case, as shown by the experiment evaluation, the analysis will focus only on the first 55 days.
 <br>
 Vanguard has set the minimum increase in completion rate at 5%. In other words, if the new design doesn't lead to at least this level of improvement, it may not be justifiable from a cost perspective.
-<br>
-![Completion Rate before 55 days](f'../Completion_rate_during_test_period_55_days.png')
 
-Based on the result, it shows that the completion rate of the test group is approximately 10% higher than the control group. It means that it has exceeded the threshold set by the company.
+![Completion Rate before 55 days](/resources/charts/Completion_rate_during_test_period_55_days.png)
+
+The result of the analysis shows that the completion rate of the test group is approximately 10% higher than the control group. It means that it has exceeded the threshold set by the company.
 
 **2. The new feature would reduce the time spent on each step of the process, leading to more efficient completion** <br>
+
 **KPI**: Time spent on each step.
 
 In this analysis, we calculate the time spent on each step per visit for both groups. 
@@ -60,18 +70,26 @@ Furthermore, we analyse the visitor retention per step. The figure below shows t
 
 (figure)
 
+**3. The new feature would reduce the error rates during the process, leading to smoother completion** <br>
 
+**KPI**: Error rates
+
+Every time a user goes a step back, this is counted as an error. The error rate is the number of errors per session. Here the average error rate per day is considered. The figure below shows that there is significant deviation in error rates between test and control group in the first 55 days or 8 weeks. Then, we can see that the error rates between those groups are more comparable.
+
+![error rate per day](/resources/charts/error_rate_per_day.png)
+
+Based on this finding, it's decided that the analysis will only take into account the first 55 days or 8 weeks of the trial.
 
 ## Conclusion
+- The users might need some time to get used to the new layout. In the introduction period, they will make more errors than before.
+
+- The total completion rate of the new feature increased by 10% compared to the old feature exceeding our 5% threshold.
 
 
-
-## Streamlit App
-(link of the app)
 
 ## Additional links
-- **Notion**:
-- **Presentation**:
+- **Notion**: https://www.notion.so/Tasks-Management-47cc792e7480418bb30dde2c69c34127 
+- **Presentation**: 
 
 
 
