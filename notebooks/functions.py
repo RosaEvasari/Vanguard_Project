@@ -420,10 +420,10 @@ def shapiro_wilk_test(df, column):
 
 # (Nat)f_2.1.0. Load and merge data
 def load_and_merge_datasets():
-    df_demo = pd.read_csv('../data/visualization/df_final_demo_cleaned.csv')
+    df_demo = pd.read_csv('../data/cleaned/df_final_demo_cleaned.csv')
     df_experiment = pd.read_csv(
-        '../data/visualization/df_final_experiment_clients_cleaned.csv')
-    df_web = pd.read_csv('../data/visualization/df_final_web_data_cleaned.csv')
+        '../data/cleaned/df_final_experiment_clients_cleaned.csv')
+    df_web = pd.read_csv('../data/cleaned/df_final_web_data_cleaned.csv')
     merged = merge_3(df_demo, df_experiment, df_web)
     return merged
 
