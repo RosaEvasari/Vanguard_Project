@@ -420,10 +420,10 @@ def shapiro_wilk_test(df, column):
 
 # (Nat)f_2.1.0. Load and merge data
 def load_and_merge_datasets():
-    df_demo = pd.read_csv('../data/cleaned/df_final_demo_cleaned.csv')
+    df_demo = pd.read_csv('../data/visualization/df_final_demo_cleaned.csv')
     df_experiment = pd.read_csv(
-        '../data/cleaned/df_final_experiment_clients_cleaned.csv')
-    df_web = pd.read_csv('../data/cleaned/df_final_web_data_cleaned.csv')
+        '../data/visualization/df_final_experiment_clients_cleaned.csv')
+    df_web = pd.read_csv('../data/visualization/df_final_web_data_cleaned.csv')
     merged = merge_3(df_demo, df_experiment, df_web)
     return merged
 
@@ -875,11 +875,11 @@ def average_time_spent_per_variation_and_segment(df, column):
 
     # Export to CSV files
     df_gender_results.to_csv(
-        '../data/cleaned/average_time_by_gender.csv', index=False)
+        '../data/visualization/average_time_by_gender.csv', index=False)
     df_age_results.to_csv(
-        '../data/cleaned/average_time_by_age.csv', index=False)
+        '../data/visualization/average_time_by_age.csv', index=False)
     df_tenure_results.to_csv(
-        '../data/cleaned/average_time_by_tenure.csv', index=False)
+        '../data/visualization/average_time_by_tenure.csv', index=False)
 
     return df_gender_results, df_age_results, df_tenure_results
 
@@ -999,13 +999,13 @@ def total_calls_per_group_gender(df):
 
     # Export DataFrames to CSV
     df_total_calls_variation.to_csv(
-        '../data/cleaned/total_calls_variation.csv', index=False)
+        '../data/visualization/total_calls_variation.csv', index=False)
     df_total_calls_gender.to_csv(
-        '../data/cleaned/total_calls_gender.csv', index=False)
+        '../data/visualization/total_calls_gender.csv', index=False)
     df_gender_percentage_increase.to_csv(
-        '../data/cleaned/gender_calls_percentage_increase.csv', index=False)
+        '../data/visualization/gender_calls_percentage_increase.csv', index=False)
     df_overall_percentage_increase.to_csv(
-        '../data/cleaned/overall_calls_percentage_increase.csv', index=False)
+        '../data/visualization/overall_calls_percentage_increase.csv', index=False)
 
     return df_total_calls_variation, df_total_calls_gender, df_gender_percentage_increase, df_overall_percentage_increase
 
@@ -1046,7 +1046,7 @@ def total_logons_per_group_gender(df):
 
         # Export dataframes to CSV
         total_logons_gender.to_csv(
-            '../data/cleaned/logons_by_gender.csv', index=False)
+            '../data/visualization/logons_by_gender.csv', index=False)
 
     return total_logons_variation, total_logons_gender, overall_percentage_increase, gender_percentage_increase
 
