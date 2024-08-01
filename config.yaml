@@ -1,0 +1,5 @@
+---
+
+# Project structure
+paths:
+  functions: lib/functions.py

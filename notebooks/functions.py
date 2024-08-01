@@ -747,18 +747,14 @@ def calculate_completion_rate_gender(df):
     increase_female = data[1]['completion_rate'] - data[3]['completion_rate']
 
     # Print increases separately for analysis
-    print(f"Increase in completion rate for males (Test vs Control): {
-          increase_male:.2%}")
-    print(f"Increase in completion rate for females (Test vs Control): {
-          increase_female:.2%}")
+    print(f"Increase in completion rate for males (Test vs Control): {increase_male}")
+    print(f"Increase in completion rate for females (Test vs Control): {increase_female}")
 
     return completion_rates_df
 
     # Display increases separately
-    print(f"Increase in completion rate for males (Test vs Control): {
-          increase_male:.2%}")
-    print(f"Increase in completion rate for females (Test vs Control): {
-          increase_female:.2%}")
+    print(f"Increase in completion rate for males (Test vs Control): {increase_male}")
+    print(f"Increase in completion rate for females (Test vs Control): {increase_female}")
 
     return completion_rates_df
 
@@ -1114,7 +1110,6 @@ def calculate_avg_daily_visits_per_time_period(df):
 
 """ Functions for Error Rates """
 
-
 def calculate_avg_errors_per_visit(df):
     df_visits = df[['unique_session_id', 'process_step', 'date_time',
                     'variation']].sort_values(by=["unique_session_id", "date_time"])
@@ -1201,6 +1196,42 @@ def plot_avg_errors_per_day(df):
     plt.show()
 
 
+def add_moving_average(df, column, period_forwards, period_backwards):
+    forwards = [k+1 for k in range(period_forwards-1)]
+    backwards = [-k-1 for k in range(abs(-period_backwards+1))]
+    shifts = forwards + backwards
+    # start value
+    df[f'{column}_mvg_avg'] = df[column]
+    for k in shifts:
+        df[f'{column}_mvg_avg'] += df[column].shift(k)
+    df[f'{column}_mvg_avg'] = df[f'{column}_mvg_avg'] / (len(shifts)+1)
+
+
+def errors_and_visits_daily_to_csv(df):
+    # calculate average errors per day and visits per day
+    errors_daily = calculate_grouped_error_rates(df, grouping_column="day_of_trial")
+    visits_daily = df.pivot_table(index="day_of_trial", values="visit_id", columns="variation", aggfunc="nunique")
+
+    # calculate moving average for errors
+    add_moving_average(errors_daily, 'error_rate_control', 10, 10)
+    add_moving_average(errors_daily, 'error_rate_test', 10, 10)
+
+    # bring data into correct format for PowerBI
+    errors_daily_control = pd.DataFrame({"trial_day": errors_daily.index, "error_rate": errors_daily["error_rate_control"], 'error_rate_mvg_average': errors_daily['error_rate_control_mvg_avg'], "variation": "Control"})
+    errors_daily_test = pd.DataFrame({"trial_day": errors_daily.index, "error_rate": errors_daily["error_rate_test"], 'error_rate_mvg_average': errors_daily['error_rate_test_mvg_avg'], "variation": "Test"})
+
+    visits_daily_control = pd.DataFrame({"trial_day": visits_daily.index, "visit_count": visits_daily["Control"], "variation": "Control"})
+    visits_daily_test = pd.DataFrame({"trial_day": visits_daily.index, "visit_count": visits_daily["Test"], "variation": "Test"})
+
+    errors_daily_csv = pd.concat([errors_daily_control, errors_daily_test], axis=0, join='inner', ignore_index=True) #default 'outer'
+    visits_daily_csv = pd.concat([visits_daily_control, visits_daily_test], axis=0, join='inner', ignore_index=True) #default 'outer'
+
+    errors_and_visits_daily_csv = pd.merge(errors_daily_csv, visits_daily_csv, on=['trial_day', 'variation'], how='inner')
+
+    # save average errors per day to csv-file
+    errors_and_visits_daily_csv.to_csv("../data/visualization/errors_and_visits_daily.csv", index=False, decimal='.', encoding='utf-8')
+
+
 def errors_daily_to_csv(df):
     # bring data into correct format for PowerBI
     errors_daily_control = pd.DataFrame(
@@ -1212,7 +1243,7 @@ def errors_daily_to_csv(df):
 
     # save average errors per day to csv-file
     errors_daily_csv.to_csv(
-        "../data/visualization/errors_daily.csv", index=True, decimal=',', encoding='utf-8')
+        "../data/visualization/errors_daily.csv", index=True, decimal='.', encoding='utf-8')
 
 
 def error_rates_hypothesis_test_vs_control(df):
