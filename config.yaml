@@ -2,4 +2,8 @@
 
 # Project structure
 paths:
-  functions: lib/functions.py
+  functions: lib/...
+  raw_data: data/raw
+  cleaned_data: data/cleaned
+  visualization_data: data/visualization
+  main-notebook: notebooks/main.ipynb

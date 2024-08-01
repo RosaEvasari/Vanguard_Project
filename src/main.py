@@ -1,9 +1,13 @@
 print("- import packages")
+import sys
+import os
 import pandas as pd
 import numpy as np
 
 print("- import functions")
-from functions import *
+# include project folder to sys path
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from lib.functions import *
 
 if __name__ == "__main__":
 
