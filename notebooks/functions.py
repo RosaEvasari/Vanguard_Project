@@ -1222,8 +1222,8 @@ def calculate_avg_error_rates_per_time_period(df):
 
 
 def calculate_grouped_error_rates(df, grouping_column):
-    error_rates = pd.DataFrame({"error_rate_control": df.groupby([grouping_column]).apply(lambda x: calculate_avg_errors_per_visit(x, include_groups=False)[0]),
-                                "error_rate_test": df.groupby([grouping_column]).apply(lambda x: calculate_avg_errors_per_visit(x, include_groups=False)[1])})
+    error_rates = pd.DataFrame({"error_rate_control": df.groupby([grouping_column]).apply(lambda x: calculate_avg_errors_per_visit(x)[0]),
+                                "error_rate_test": df.groupby([grouping_column]).apply(lambda x: calculate_avg_errors_per_visit(x)[1])})
     return error_rates
 
 
