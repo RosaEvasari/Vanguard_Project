@@ -62,13 +62,12 @@ In this analysis, we calculate the time spent on each step per visit for both gr
 
 The figure below shows that the control group moves slightly faster on average. The total time spent for control and test group is 309.68 s and 315.32 s, respectively.
 
-(figure)
-
 Furthermore, we analyse the visitor retention per step. The figure below shows that the retention improved from 51.72% to 65.42%. 
 - There is significant progress in users retention on 'step_1' and 'confirm'.
 - The reduction of time spent on ‘step_1’ significantly reduced the the drop of visitors retention (14.7 % compare to 23.8% in control group)
 
-(figure)
+![Completion Rate before 55 days](/resources/charts/time_per_step.png)
+
 
 **3. The new feature would reduce the error rates during the process, leading to smoother completion** <br>
 
