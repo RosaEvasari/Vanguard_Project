@@ -64,10 +64,14 @@ The figure below shows that the control group moves slightly faster on average. 
 
 Furthermore, we analyse the visitor retention per step. The figure below shows that the retention improved from 51.72% to 65.42%. 
 - There is significant progress in users retention on 'step_1' and 'confirm'.
-- The reduction of time spent on ‘step_1’ significantly reduced the the drop of visitors retention (14.7 % compare to 23.8% in control group)
+- The reduction of time spent on ‘step_1’ significantly reduced % of gone visitors retention (14.7 % compare to 23.8% in control group)
 
 ![Completion Rate before 55 days](/resources/charts/time_per_step.png)
 
+The reduction of time spent on ‘step_1’ led to a significant increase of visitors retention (9.1 % in total)
+We can recommend to continue to work on retention rate Improvement on ‘step_1’ and ‘step_2’
+
+![Completion Rate before 55 days](/resources/charts/retention_rate_gone_users.png)  
 
 **3. The new feature would reduce the error rates during the process, leading to smoother completion** <br>
 
@@ -84,7 +88,7 @@ Based on this finding, it's decided that the analysis will only take into accoun
 
 - The total completion rate of the new feature increased by 10% compared to the old feature exceeding our 5% threshold.
 
-
+- The reduction of time spent ( on ‘step_1’) led to a significant increase of visitors retention (9.1 % in total) 
 
 ## Additional links
 - **Notion**: https://www.notion.so/Tasks-Management-47cc792e7480418bb30dde2c69c34127 
