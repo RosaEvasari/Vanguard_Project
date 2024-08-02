@@ -93,6 +93,7 @@ Based on this finding, it's decided that the analysis will only take into accoun
 ## Additional links
 - **Notion**: https://www.notion.so/Tasks-Management-47cc792e7480418bb30dde2c69c34127 
 - **Presentation**: https://docs.google.com/presentation/d/1G75818Gwe63nyUir6QaTZ9PY0IcC3c65tt_HlW3CBCg/edit#slide=id.g2f01f6d6dde_1_100
+- **PowerBI**: [PowerBI](resources/power_bi)
 
 
 
