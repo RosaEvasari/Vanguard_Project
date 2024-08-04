@@ -79,7 +79,7 @@ We can recommend to continue to work on retention rate Improvement on ‘step_1�
 
 Every time a user goes a step back, this is counted as an error. The error rate is the number of errors per session. Here the average error rate per day is considered. The figure below shows that there is significant deviation in error rates between test and control group in the first 55 days or 8 weeks. Then, we can see that the error rates between those groups are more comparable.
 
-![error rate per day](/resources/charts/error_rate_per_day.png)
+ <img src="/resources/charts/error_rate_per_day.png" alt="error_rate_per_day" width=500>
 
 Based on this finding, it's decided that the analysis will only take into account the first 55 days or 8 weeks of the trial.
 
@@ -91,9 +91,9 @@ Based on this finding, it's decided that the analysis will only take into accoun
 - The reduction of time spent ( on ‘step_1’) led to a significant increase of visitors retention (9.1 % in total) 
 
 ## Additional links
-- **Notion**: https://www.notion.so/Tasks-Management-47cc792e7480418bb30dde2c69c34127 
-- **Presentation**: https://docs.google.com/presentation/d/1G75818Gwe63nyUir6QaTZ9PY0IcC3c65tt_HlW3CBCg/edit#slide=id.g2f01f6d6dde_1_100
-- **PowerBI**: [PowerBI](resources/power_bi)
+- **Notion**: [Project Management in Notion](https://www.notion.so/Tasks-Management-47cc792e7480418bb30dde2c69c34127)
+- **Presentation**: [Google Presentation Slides](https://docs.google.com/presentation/d/1G75818Gwe63nyUir6QaTZ9PY0IcC3c65tt_HlW3CBCg/edit#slide=id.g2f01f6d6dde_1_100)
+- **PowerBI**: [PowerBI Dashboard](resources/power_bi)
 
 
 
